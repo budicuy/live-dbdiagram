@@ -1,6 +1,11 @@
 "use client";
 
-import { ChevronDown, ChevronUp } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  ChevronUp,
+} from "lucide-react";
 import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 import { useProjectStore } from "../lib/store/use-project-store";
@@ -31,6 +36,17 @@ export function MainLayout() {
   const redo = useProjectStore((s) => s.redo);
   const topNavOpen = useProjectStore((s) => s.ui.topNavOpen);
   const toggleTopNav = useProjectStore((s) => s.toggleTopNav);
+  const sidebarOpen = useProjectStore((s) => s.ui.sidebarOpen);
+  const toggleSidebar = useProjectStore((s) => s.toggleSidebar);
+  const editorOpen = useProjectStore((s) => s.ui.editorOpen);
+  const toggleEditor = useProjectStore((s) => s.toggleEditor);
+  const editorWidth = useProjectStore((s) => s.ui.editorWidth);
+  const inspectorOpen = useProjectStore((s) => s.ui.inspectorOpen);
+  const toggleInspector = useProjectStore((s) => s.toggleInspector);
+
+  const sidebarLeft = sidebarOpen ? 256 : 0;
+  const editorLeft = (sidebarOpen ? 256 : 0) + (editorOpen ? editorWidth : 0);
+  const inspectorRight = inspectorOpen ? 320 : 0;
 
   const [projectModalOpen, setProjectModalOpen] = useState(false);
   const [importModalOpen, setImportModalOpen] = useState(false);
@@ -123,13 +139,66 @@ export function MainLayout() {
       </div>
 
       {/* Main Workspace: Left Sidebar + Editor + Canvas + Inspector */}
-      <div className="flex flex-1 w-full min-h-0 overflow-hidden">
+      <div className="flex flex-1 w-full min-h-0 overflow-hidden relative">
         <SidebarTables />
         <EditorPanel />
         <main className="flex-1 h-full relative overflow-hidden">
           <ErdCanvas />
         </main>
         <InspectorPanel />
+
+        {/* Small Hide/Unhide Tab for Sidebar (Panel Kiri) */}
+        <button
+          type="button"
+          onClick={toggleSidebar}
+          title={
+            sidebarOpen ? "Sembunyikan Panel Tabel" : "Tampilkan Panel Tabel"
+          }
+          style={{ left: `${sidebarLeft}px` }}
+          className="absolute top-[calc(50%-22px)] -translate-y-1/2 z-30 flex items-center justify-center w-5 h-8 rounded-r-md border border-l-0 border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 shadow-xs hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-[left,colors] duration-150 cursor-pointer group focus:outline-hidden"
+        >
+          {sidebarOpen ? (
+            <ChevronLeft className="w-3.5 h-3.5 group-hover:-translate-x-0.5 transition-transform" />
+          ) : (
+            <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+          )}
+        </button>
+
+        {/* Small Hide/Unhide Tab for Editor (Editor Kode) */}
+        <button
+          type="button"
+          onClick={toggleEditor}
+          title={
+            editorOpen ? "Sembunyikan Editor DBML" : "Tampilkan Editor DBML"
+          }
+          style={{ left: `${editorLeft}px` }}
+          className="absolute top-[calc(50%+22px)] -translate-y-1/2 z-30 flex items-center justify-center w-5 h-8 rounded-r-md border border-l-0 border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 shadow-xs hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-[left,colors] duration-75 cursor-pointer group focus:outline-hidden"
+        >
+          {editorOpen ? (
+            <ChevronLeft className="w-3.5 h-3.5 group-hover:-translate-x-0.5 transition-transform" />
+          ) : (
+            <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+          )}
+        </button>
+
+        {/* Small Hide/Unhide Tab for Inspector (Panel Kanan) */}
+        <button
+          type="button"
+          onClick={toggleInspector}
+          title={
+            inspectorOpen
+              ? "Sembunyikan Panel Inspektor"
+              : "Tampilkan Panel Inspektor"
+          }
+          style={{ right: `${inspectorRight}px` }}
+          className="absolute top-1/2 -translate-y-1/2 z-30 flex items-center justify-center w-5 h-8 rounded-l-md border border-r-0 border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 shadow-xs hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-[right,colors] duration-150 cursor-pointer group focus:outline-hidden"
+        >
+          {inspectorOpen ? (
+            <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+          ) : (
+            <ChevronLeft className="w-3.5 h-3.5 group-hover:-translate-x-0.5 transition-transform" />
+          )}
+        </button>
       </div>
 
       {/* Modals */}

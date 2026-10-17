@@ -4,7 +4,6 @@ import {
   AlertCircle,
   Check,
   CheckCircle2,
-  Code2,
   Database,
   FileDown,
   FileUp,
@@ -12,8 +11,6 @@ import {
   HelpCircle,
   LayoutGrid,
   Loader2,
-  PanelLeft,
-  PanelRight,
   Redo2,
   Settings,
   Undo2,
@@ -45,10 +42,6 @@ export function TopNav({
   const applyAutoLayout = useProjectStore((s) => s.applyAutoLayout);
   const setDialect = useProjectStore((s) => s.setDialect);
   const setProjectName = useProjectStore((s) => s.setProjectName);
-  const ui = useProjectStore((s) => s.ui);
-  const toggleEditor = useProjectStore((s) => s.toggleEditor);
-  const toggleSidebar = useProjectStore((s) => s.toggleSidebar);
-  const toggleInspector = useProjectStore((s) => s.toggleInspector);
   const persistNow = useProjectStore((s) => s.persistNow);
 
   const [isEditingTitle, setIsEditingTitle] = useState(false);
@@ -244,51 +237,6 @@ export function TopNav({
           <FileDown className="w-3.5 h-3.5" />
           <span>Ekspor</span>
         </button>
-
-        <div className="h-4 w-px bg-slate-200 dark:bg-slate-800 mx-1 hidden sm:block" />
-
-        {/* Panel View Toggles */}
-        <div className="flex items-center rounded-md border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-0.5">
-          <button
-            type="button"
-            title="Toggle Panel Tabel Kiri"
-            onClick={toggleSidebar}
-            className={cn(
-              "p-1.5 rounded transition-colors",
-              ui.sidebarOpen
-                ? "bg-white dark:bg-slate-800 text-blue-500 shadow-xs"
-                : "text-slate-400 hover:text-slate-700 dark:hover:text-slate-200",
-            )}
-          >
-            <PanelLeft className="w-3.5 h-3.5" />
-          </button>
-          <button
-            type="button"
-            title="Toggle Editor DBML"
-            onClick={toggleEditor}
-            className={cn(
-              "p-1.5 rounded transition-colors",
-              ui.editorOpen
-                ? "bg-white dark:bg-slate-800 text-blue-500 shadow-xs"
-                : "text-slate-400 hover:text-slate-700 dark:hover:text-slate-200",
-            )}
-          >
-            <Code2 className="w-3.5 h-3.5" />
-          </button>
-          <button
-            type="button"
-            title="Toggle Inspektor Kanan"
-            onClick={toggleInspector}
-            className={cn(
-              "p-1.5 rounded transition-colors",
-              ui.inspectorOpen
-                ? "bg-white dark:bg-slate-800 text-blue-500 shadow-xs"
-                : "text-slate-400 hover:text-slate-700 dark:hover:text-slate-200",
-            )}
-          >
-            <PanelRight className="w-3.5 h-3.5" />
-          </button>
-        </div>
 
         {/* Settings Popover */}
         <div className="relative">
