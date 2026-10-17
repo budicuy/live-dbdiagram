@@ -101,6 +101,9 @@ interface ProjectStore {
   setEditorWidth: (width: number) => void;
   setTheme: (theme: "light" | "dark") => void;
   toggleTheme: () => void;
+  editorTargetLine: { line: number; column?: number } | null;
+  gotoEditorLine: (line: number, column?: number) => void;
+  clearEditorTargetLine: () => void;
 
   // Manual save trigger
   persistNow: () => Promise<void>;
@@ -136,6 +139,13 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
     history: { past: [], future: [] },
     selectedTableId: null,
     selectedRelationId: null,
+    editorTargetLine: null,
+    gotoEditorLine: (line: number, column = 1) => {
+      set({ editorTargetLine: { line, column } });
+    },
+    clearEditorTargetLine: () => {
+      set({ editorTargetLine: null });
+    },
     ui: {
       editorOpen: true,
       inspectorOpen: true,
@@ -190,7 +200,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
 
         const parseRes = parseDbml(activeProject.dbml, activeProject.dialect);
         const schema = parseRes.schema || activeProject.schema;
-        const validationDiags = validateSchema(schema);
+        const validationDiags = validateSchema(schema, activeProject.dbml);
         const allDiags = [...parseRes.diagnostics, ...validationDiags];
 
         set({
@@ -221,7 +231,10 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
 
         const parseRes = parseDbml(p.dbml, p.dialect);
         const schema = parseRes.schema || p.schema;
-        const allDiags = [...parseRes.diagnostics, ...validateSchema(schema)];
+        const allDiags = [
+          ...parseRes.diagnostics,
+          ...validateSchema(schema, p.dbml),
+        ];
 
         set({
           project: p,
@@ -288,7 +301,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
 
       if (parseRes.success && parseRes.schema) {
         newSchema = parseRes.schema;
-        const validationDiags = validateSchema(newSchema);
+        const validationDiags = validateSchema(newSchema, dbml);
         diags = [...parseRes.diagnostics, ...validationDiags];
       }
 
@@ -338,7 +351,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
       const currentSchema = project.schema;
       const nextSchema = updater(currentSchema);
       const newDbml = serializeDbml(nextSchema);
-      const validationDiags = validateSchema(nextSchema);
+      const validationDiags = validateSchema(nextSchema, newDbml);
 
       const newHistory = {
         past: [...history.past.slice(-20), project.dbml],

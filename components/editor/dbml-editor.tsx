@@ -10,6 +10,8 @@ export function DbmlEditor() {
   const setDbml = useProjectStore((s) => s.setDbml);
   const diagnostics = useProjectStore((s) => s.diagnostics);
   const theme = useProjectStore((s) => s.ui.theme);
+  const editorTargetLine = useProjectStore((s) => s.editorTargetLine);
+  const clearEditorTargetLine = useProjectStore((s) => s.clearEditorTargetLine);
 
   const editorRef = useRef<any>(null);
   const monacoRef = useRef<any>(null);
@@ -66,6 +68,19 @@ export function DbmlEditor() {
 
     monaco.editor.setModelMarkers(model, "dbml", markers);
   }, [diagnostics]);
+
+  // Handle programmatic line jump from problems panel / header pill
+  useEffect(() => {
+    if (!editorTargetLine || !editorRef.current) return;
+    const { line, column = 1 } = editorTargetLine;
+    const editor = editorRef.current;
+
+    editor.revealLineInCenter(line);
+    editor.setPosition({ lineNumber: line, column });
+    editor.focus();
+
+    clearEditorTargetLine();
+  }, [editorTargetLine, clearEditorTargetLine]);
 
   // Handle text changes with debounce
   const handleEditorChange = useCallback(

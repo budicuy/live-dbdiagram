@@ -89,6 +89,8 @@ export interface SchemaDiagnostic {
   endLine?: number;
   endColumn?: number;
   severity: "error" | "warning";
+  rule?: string;
+  suggestion?: string;
 }
 
 // Zod Schemas for Validation and Project Backup Import

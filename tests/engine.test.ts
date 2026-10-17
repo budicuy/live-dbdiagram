@@ -95,8 +95,29 @@ Table broken_table {
             },
           ],
         },
+        {
+          id: "categories",
+          name: "categories",
+          columns: [
+            {
+              id: "cat_id",
+              name: "id",
+              type: "integer",
+              pk: true,
+            },
+          ],
+        },
       ],
-      relations: [],
+      relations: [
+        {
+          id: "rel_1",
+          sourceTable: "products",
+          sourceColumn: "id",
+          targetTable: "categories",
+          targetColumn: "id",
+          cardinality: "many-to-one" as const,
+        },
+      ],
     };
 
     const serialized = serializeDbml(schema);
@@ -104,11 +125,13 @@ Table broken_table {
     expect(serialized).toContain("id integer [pk, increment]");
     expect(serialized).toContain("name varchar(100) [not null]");
     expect(serialized).toContain("price numeric(10,2) [default: 0.00]");
+    expect(serialized).toContain("Ref: products.id > categories.id");
 
-    // Reparsing serialized DBML should succeed
+    // Reparsing serialized DBML should succeed without any syntax errors
     const reparse = parseDbml(serialized, "postgres");
     expect(reparse.success).toBe(true);
-    expect(reparse.schema?.tables[0].columns.length).toBe(3);
+    expect(reparse.schema?.tables.length).toBe(2);
+    expect(reparse.schema?.relations.length).toBe(1);
   });
 });
 
@@ -182,6 +205,47 @@ describe("Schema Validator", () => {
         ),
       ),
     ).toBe(true);
+  });
+
+  it("enriches diagnostics with accurate line numbers and fix suggestions based on DBML text", () => {
+    const dbml = `Table users {
+  id integer [pk]
+}
+
+Table orders {
+  user_id integer
+  total decimal
+}
+`;
+    const schema = {
+      dialect: "postgres" as const,
+      tables: [
+        {
+          id: "users",
+          name: "users",
+          columns: [{ id: "u_id", name: "id", type: "integer", pk: true }],
+        },
+        {
+          id: "orders",
+          name: "orders",
+          columns: [
+            { id: "o_user_id", name: "user_id", type: "integer" },
+            { id: "o_total", name: "total", type: "decimal" },
+          ],
+        },
+      ],
+      relations: [],
+    };
+
+    const diagnostics = validateSchema(schema, dbml);
+    const orderWarning = diagnostics.find(
+      (d) => d.message.includes("orders") && d.severity === "warning",
+    );
+
+    expect(orderWarning).toBeDefined();
+    expect(orderWarning?.rule).toBe("missing-primary-key");
+    expect(orderWarning?.line).toBe(5); // Table orders starts at line 5
+    expect(orderWarning?.suggestion).toContain("Tambahkan atribut '[pk]'");
   });
 });
 

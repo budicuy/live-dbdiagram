@@ -143,23 +143,55 @@ export function parseDbml(
   } catch (err: any) {
     const diagnostics: SchemaDiagnostic[] = [];
 
+    const getSyntaxSuggestion = (msg: string): string => {
+      const lower = msg.toLowerCase();
+      if (
+        lower.includes("expected") &&
+        (lower.includes("]") || lower.includes("["))
+      ) {
+        return "Periksa kurung siku '[' dan ']' pada atribut kolom (contoh: [pk, not null]).";
+      }
+      if (
+        lower.includes("expected") &&
+        (lower.includes("}") || lower.includes("{"))
+      ) {
+        return "Pastikan kurung kurawal '{' dan '}' penutup blok tabel atau indeks sudah lengkap.";
+      }
+      if (
+        lower.includes("expected") &&
+        (lower.includes("''") || lower.includes("'"))
+      ) {
+        return "Pastikan tanda petik tunggal penutup string/note sudah tertutup dengan benar.";
+      }
+      if (lower.includes("unexpected") || lower.includes("expected")) {
+        return "Periksa format sintaks DBML pada baris ini. Pastikan nama tabel, kolom, atau tipe data sesuai format standar.";
+      }
+      return "Periksa kembali aturan penulisan sintaks DBML pada baris dan kolom yang ditunjuk.";
+    };
+
     if (err && Array.isArray(err.diags)) {
       for (const diag of err.diags) {
+        const msg = diag.message || "Kesalahan sintaks DBML";
         diagnostics.push({
-          message: diag.message || "Kesalahan sintaks DBML",
+          message: msg,
           line: diag.location?.start?.line ?? 1,
           column: diag.location?.start?.column ?? 1,
           endLine: diag.location?.end?.line,
           endColumn: diag.location?.end?.column,
           severity: "error",
+          rule: "syntax-error",
+          suggestion: getSyntaxSuggestion(msg),
         });
       }
     } else {
+      const msg = err?.message || String(err);
       diagnostics.push({
-        message: err?.message || String(err),
+        message: msg,
         line: 1,
         column: 1,
         severity: "error",
+        rule: "syntax-error",
+        suggestion: getSyntaxSuggestion(msg),
       });
     }
 

@@ -86,9 +86,9 @@ export function serializeDbml(schema: DatabaseSchema): string {
       const settingsStr =
         settings.length > 0 ? ` [${settings.join(", ")}]` : "";
 
-      const namePrefix = rel.name ? `${rel.name}: ` : "";
+      const refHeader = rel.name ? `Ref ${rel.name}:` : "Ref:";
       refLines.push(
-        `Ref ${namePrefix}${rel.sourceTable}.${rel.sourceColumn} ${op} ${rel.targetTable}.${rel.targetColumn}${settingsStr}`,
+        `${refHeader} ${rel.sourceTable}.${rel.sourceColumn} ${op} ${rel.targetTable}.${rel.targetColumn}${settingsStr}`,
       );
     }
     parts.push(refLines.join("\n"));
