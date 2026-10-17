@@ -151,7 +151,11 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
 
       // Apply initial theme class to HTML
       if (typeof document !== "undefined") {
-        document.documentElement.classList.toggle("dark", theme === "dark");
+        if (theme === "dark") {
+          document.documentElement.classList.add("dark");
+        } else {
+          document.documentElement.classList.remove("dark");
+        }
       }
 
       set({
@@ -685,7 +689,11 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
 
     setTheme: (theme: "light" | "dark") => {
       if (typeof document !== "undefined") {
-        document.documentElement.classList.toggle("dark", theme === "dark");
+        if (theme === "dark") {
+          document.documentElement.classList.add("dark");
+        } else {
+          document.documentElement.classList.remove("dark");
+        }
       }
       set((s) => ({ ui: { ...s.ui, theme } }));
       savePreferences({ theme });
