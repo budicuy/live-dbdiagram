@@ -15,6 +15,7 @@ export interface UserPreferences {
   minimapPosition: CanvasPanelPosition;
   showControls: boolean;
   controlsPosition: CanvasPanelPosition;
+  topNavOpen: boolean;
 }
 
 const PREF_KEY = "live_dbdiagram_prefs";
@@ -30,6 +31,7 @@ const DEFAULT_PREFERENCES: UserPreferences = {
   minimapPosition: "bottom-left",
   showControls: true,
   controlsPosition: "bottom-right",
+  topNavOpen: true,
 };
 
 export function getPreferences(): UserPreferences {

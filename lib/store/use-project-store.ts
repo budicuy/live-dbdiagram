@@ -36,6 +36,7 @@ interface UIState {
   minimapPosition: CanvasPanelPosition;
   showControls: boolean;
   controlsPosition: CanvasPanelPosition;
+  topNavOpen: boolean;
 }
 
 interface ProjectStore {
@@ -106,6 +107,8 @@ interface ProjectStore {
   toggleEditor: () => void;
   toggleInspector: () => void;
   toggleSidebar: () => void;
+  toggleTopNav: () => void;
+  setTopNavOpen: (open: boolean) => void;
   setEditorWidth: (width: number) => void;
   setTheme: (theme: "light" | "dark") => void;
   toggleTheme: () => void;
@@ -170,6 +173,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
       minimapPosition: "bottom-left",
       showControls: true,
       controlsPosition: "bottom-right",
+      topNavOpen: true,
     },
     isInitialized: false,
 
@@ -197,6 +201,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
           minimapPosition: prefs.minimapPosition || "bottom-left",
           showControls: prefs.showControls ?? true,
           controlsPosition: prefs.controlsPosition || "bottom-right",
+          topNavOpen: prefs.topNavOpen ?? true,
         },
       });
 
@@ -740,6 +745,17 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
       const next = !get().ui.sidebarOpen;
       set((s) => ({ ui: { ...s.ui, sidebarOpen: next } }));
       savePreferences({ sidebarOpen: next });
+    },
+
+    toggleTopNav: () => {
+      const next = !get().ui.topNavOpen;
+      set((s) => ({ ui: { ...s.ui, topNavOpen: next } }));
+      savePreferences({ topNavOpen: next });
+    },
+
+    setTopNavOpen: (open: boolean) => {
+      set((s) => ({ ui: { ...s.ui, topNavOpen: open } }));
+      savePreferences({ topNavOpen: open });
     },
 
     setEditorWidth: (width: number) => {
