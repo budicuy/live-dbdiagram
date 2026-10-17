@@ -247,14 +247,16 @@ export function ErdCanvas() {
           color={theme === "dark" ? "#334155" : "#cbd5e1"}
         />
         <Controls
+          position="bottom-right"
           showInteractive={false}
-          className="!bottom-4 !right-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800"
+          className="!m-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg shadow-sm overflow-hidden"
         />
         <MiniMap
+          position="bottom-left"
           nodeStrokeWidth={3}
           zoomable
           pannable
-          className="!bottom-4 !left-4 !bg-white/80 dark:!bg-slate-900/80 !border !border-slate-200 dark:!border-slate-800 rounded-lg overflow-hidden backdrop-blur-xs"
+          className="!w-[200px] !h-[140px] !m-4 !bg-white/90 dark:!bg-slate-900/90 !border !border-slate-200 dark:!border-slate-800 rounded-lg overflow-hidden shadow-sm backdrop-blur-xs"
           nodeColor={() => (theme === "dark" ? "#3b82f6" : "#60a5fa")}
           maskColor={
             theme === "dark"
