@@ -91,9 +91,9 @@ export const TableNode = memo(({ data, selected }: TableNodeProps) => {
             key={col.id}
             className="relative flex items-center justify-between px-3 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors"
           >
-            {/* Target Handle (Left) */}
+            {/* Left Handle */}
             <Handle
-              type="target"
+              type="source"
               position={Position.Left}
               id={`${col.name}-left`}
               className="!w-2 !h-2 !-left-1 !bg-blue-500 !border-white dark:!border-slate-900"

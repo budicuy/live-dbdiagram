@@ -5,6 +5,12 @@ export interface NodePositionInfo {
   id: string;
   position: { x: number; y: number };
   measured?: { width?: number; height?: number };
+  data?: {
+    table?: {
+      id?: string;
+      name?: string;
+    };
+  };
 }
 
 /**
@@ -17,7 +23,7 @@ export function extractColumnName(handleId: string | null | undefined): string {
 
 /**
  * Dynamically computes optimal nearest-side handles for ERD relations.
- * Prevents 180° loops and wraps cables cleanly between closest facing sides.
+ * Prevents 180° loops and connects cables directly to closest facing sides.
  */
 export function computeSmartEdges(
   relations: RelationDefinition[],
@@ -27,6 +33,13 @@ export function computeSmartEdges(
   const nodeMap = new Map<string, NodePositionInfo>();
   for (const node of nodes) {
     nodeMap.set(node.id, node);
+    const tbl = node.data?.table;
+    if (tbl?.id) {
+      nodeMap.set(tbl.id, node);
+    }
+    if (tbl?.name) {
+      nodeMap.set(tbl.name, node);
+    }
   }
 
   return relations.map((rel) => {
@@ -61,22 +74,16 @@ export function computeSmartEdges(
     const widthB = nodeB?.measured?.width ?? 260;
     const centerB = posB.x + widthB / 2;
 
-    // Check if vertically stacked with nearly aligned X centers
-    const isStacked = Math.abs(centerA - centerB) < 60;
-
     let sourceHandle: string;
     let targetHandle: string;
     let inverted = false;
 
-    if (isStacked) {
-      // Connect both along the outside right gutter to avoid cutting through nodes
-      sourceHandle = `${rel.sourceColumn}-right`;
-      targetHandle = `${rel.targetColumn}-right`;
-    } else if (centerA < centerB) {
+    if (centerA < centerB) {
       // Source table is to the left of Target table:
       // Edge leaves right of source, enters left of target
       sourceHandle = `${rel.sourceColumn}-right`;
       targetHandle = `${rel.targetColumn}-left`;
+      inverted = false;
     } else {
       // Source table is to the right of Target table:
       // Edge leaves left of source, enters right of target

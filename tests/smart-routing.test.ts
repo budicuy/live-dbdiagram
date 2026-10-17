@@ -103,10 +103,10 @@ describe("Smart Edge Routing Engine", () => {
     expect(edges[0].data?.isSelf).toBe(true);
   });
 
-  it("routes along outside gutter when tables are vertically stacked with overlapping centers", () => {
+  it("connects facing sides when tables are vertically staggered", () => {
     const relations: RelationDefinition[] = [
       {
-        id: "rel-stacked",
+        id: "rel-staggered",
         sourceTable: "orders",
         sourceColumn: "customer_id",
         targetTable: "customers",
@@ -126,7 +126,8 @@ describe("Smart Edge Routing Engine", () => {
 
     const edges = computeSmartEdges(relations, nodes);
     expect(edges).toHaveLength(1);
+    // orders is at 200, customers is at 210 -> orders is to the left of customers
     expect(edges[0].sourceHandle).toBe("customer_id-right");
-    expect(edges[0].targetHandle).toBe("id-right");
+    expect(edges[0].targetHandle).toBe("id-left");
   });
 });
