@@ -1,3 +1,9 @@
+export type CanvasPanelPosition =
+  | "top-left"
+  | "top-right"
+  | "bottom-left"
+  | "bottom-right";
+
 export interface UserPreferences {
   theme: "light" | "dark" | "system";
   lastProjectId: string | null;
@@ -5,6 +11,10 @@ export interface UserPreferences {
   inspectorOpen: boolean;
   sidebarOpen: boolean;
   editorWidth: number;
+  showMinimap: boolean;
+  minimapPosition: CanvasPanelPosition;
+  showControls: boolean;
+  controlsPosition: CanvasPanelPosition;
 }
 
 const PREF_KEY = "live_dbdiagram_prefs";
@@ -16,6 +26,10 @@ const DEFAULT_PREFERENCES: UserPreferences = {
   inspectorOpen: true,
   sidebarOpen: true,
   editorWidth: 420,
+  showMinimap: true,
+  minimapPosition: "bottom-left",
+  showControls: true,
+  controlsPosition: "bottom-right",
 };
 
 export function getPreferences(): UserPreferences {

@@ -12,17 +12,17 @@ import {
   HelpCircle,
   LayoutGrid,
   Loader2,
-  Moon,
   PanelLeft,
   PanelRight,
   Redo2,
-  Sun,
+  Settings,
   Undo2,
 } from "lucide-react";
 import { useState } from "react";
 import { useProjectStore } from "../../lib/store/use-project-store";
 import type { Dialect, SaveStatus } from "../../lib/types/schema";
 import { cn } from "../../lib/utils";
+import { SettingsPopover } from "./settings-popover";
 
 interface TopNavProps {
   onOpenProjectModal: () => void;
@@ -49,11 +49,11 @@ export function TopNav({
   const toggleEditor = useProjectStore((s) => s.toggleEditor);
   const toggleSidebar = useProjectStore((s) => s.toggleSidebar);
   const toggleInspector = useProjectStore((s) => s.toggleInspector);
-  const toggleTheme = useProjectStore((s) => s.toggleTheme);
   const persistNow = useProjectStore((s) => s.persistNow);
 
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [titleInput, setTitleInput] = useState("");
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const handleStartEditTitle = () => {
     if (project) {
@@ -290,19 +290,26 @@ export function TopNav({
           </button>
         </div>
 
-        {/* Theme Toggle */}
-        <button
-          type="button"
-          title="Ubah Tema Gelap / Terang"
-          onClick={toggleTheme}
-          className="p-1.5 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 transition-colors"
-        >
-          {ui.theme === "dark" ? (
-            <Sun className="w-4 h-4 text-amber-400" />
-          ) : (
-            <Moon className="w-4 h-4 text-slate-600" />
-          )}
-        </button>
+        {/* Settings Popover */}
+        <div className="relative">
+          <button
+            type="button"
+            title="Pengaturan Tampilan & Kanvas"
+            onClick={() => setSettingsOpen((prev) => !prev)}
+            className={cn(
+              "p-1.5 rounded-md transition-colors",
+              settingsOpen
+                ? "bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400"
+                : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800",
+            )}
+          >
+            <Settings className="w-4 h-4" />
+          </button>
+          <SettingsPopover
+            open={settingsOpen}
+            onClose={() => setSettingsOpen(false)}
+          />
+        </div>
 
         {/* Shortcut & Help */}
         <button

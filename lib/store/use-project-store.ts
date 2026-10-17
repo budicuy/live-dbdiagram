@@ -11,7 +11,11 @@ import {
   listProjects,
   saveProject,
 } from "../storage/db";
-import { getPreferences, savePreferences } from "../storage/preference";
+import {
+  type CanvasPanelPosition,
+  getPreferences,
+  savePreferences,
+} from "../storage/preference";
 import type {
   ColumnDefinition,
   DatabaseSchema,
@@ -28,6 +32,10 @@ interface UIState {
   sidebarOpen: boolean;
   editorWidth: number;
   theme: "light" | "dark";
+  showMinimap: boolean;
+  minimapPosition: CanvasPanelPosition;
+  showControls: boolean;
+  controlsPosition: CanvasPanelPosition;
 }
 
 interface ProjectStore {
@@ -101,6 +109,12 @@ interface ProjectStore {
   setEditorWidth: (width: number) => void;
   setTheme: (theme: "light" | "dark") => void;
   toggleTheme: () => void;
+  setShowMinimap: (show: boolean) => void;
+  toggleMinimap: () => void;
+  setMinimapPosition: (pos: CanvasPanelPosition) => void;
+  setShowControls: (show: boolean) => void;
+  toggleControls: () => void;
+  setControlsPosition: (pos: CanvasPanelPosition) => void;
   editorTargetLine: { line: number; column?: number } | null;
   gotoEditorLine: (line: number, column?: number) => void;
   clearEditorTargetLine: () => void;
@@ -152,6 +166,10 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
       sidebarOpen: true,
       editorWidth: 420,
       theme: "dark",
+      showMinimap: true,
+      minimapPosition: "bottom-left",
+      showControls: true,
+      controlsPosition: "bottom-right",
     },
     isInitialized: false,
 
@@ -175,6 +193,10 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
           sidebarOpen: prefs.sidebarOpen,
           editorWidth: prefs.editorWidth || 420,
           theme,
+          showMinimap: prefs.showMinimap ?? true,
+          minimapPosition: prefs.minimapPosition || "bottom-left",
+          showControls: prefs.showControls ?? true,
+          controlsPosition: prefs.controlsPosition || "bottom-right",
         },
       });
 
@@ -740,6 +762,36 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
     toggleTheme: () => {
       const next = get().ui.theme === "dark" ? "light" : "dark";
       get().setTheme(next);
+    },
+
+    setShowMinimap: (show: boolean) => {
+      set((s) => ({ ui: { ...s.ui, showMinimap: show } }));
+      savePreferences({ showMinimap: show });
+    },
+
+    toggleMinimap: () => {
+      const next = !get().ui.showMinimap;
+      get().setShowMinimap(next);
+    },
+
+    setMinimapPosition: (pos: CanvasPanelPosition) => {
+      set((s) => ({ ui: { ...s.ui, minimapPosition: pos } }));
+      savePreferences({ minimapPosition: pos });
+    },
+
+    setShowControls: (show: boolean) => {
+      set((s) => ({ ui: { ...s.ui, showControls: show } }));
+      savePreferences({ showControls: show });
+    },
+
+    toggleControls: () => {
+      const next = !get().ui.showControls;
+      get().setShowControls(next);
+    },
+
+    setControlsPosition: (pos: CanvasPanelPosition) => {
+      set((s) => ({ ui: { ...s.ui, controlsPosition: pos } }));
+      savePreferences({ controlsPosition: pos });
     },
 
     persistNow: async () => {

@@ -40,6 +40,10 @@ export function ErdCanvas() {
   const setSelectedTableId = useProjectStore((s) => s.setSelectedTableId);
   const setSelectedRelationId = useProjectStore((s) => s.setSelectedRelationId);
   const theme = useProjectStore((s) => s.ui.theme);
+  const showMinimap = useProjectStore((s) => s.ui.showMinimap);
+  const minimapPosition = useProjectStore((s) => s.ui.minimapPosition);
+  const showControls = useProjectStore((s) => s.ui.showControls);
+  const controlsPosition = useProjectStore((s) => s.ui.controlsPosition);
 
   // Transform tables to React Flow nodes
   const initialNodes: Node[] = useMemo(() => {
@@ -246,24 +250,34 @@ export function ErdCanvas() {
           size={1.5}
           color={theme === "dark" ? "#334155" : "#cbd5e1"}
         />
-        <Controls
-          position="bottom-right"
-          showInteractive={false}
-          className="!m-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg shadow-sm overflow-hidden"
-        />
-        <MiniMap
-          position="bottom-left"
-          nodeStrokeWidth={3}
-          zoomable
-          pannable
-          className="!w-[200px] !h-[140px] !m-4 !bg-white/90 dark:!bg-slate-900/90 !border !border-slate-200 dark:!border-slate-800 rounded-lg overflow-hidden shadow-sm backdrop-blur-xs"
-          nodeColor={() => (theme === "dark" ? "#3b82f6" : "#60a5fa")}
-          maskColor={
-            theme === "dark"
-              ? "rgba(15, 23, 42, 0.7)"
-              : "rgba(241, 245, 249, 0.7)"
-          }
-        />
+        {showControls && (
+          <Controls
+            position={controlsPosition}
+            showInteractive={false}
+            className={`!m-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg shadow-sm overflow-hidden ${
+              showMinimap && controlsPosition === minimapPosition
+                ? controlsPosition.startsWith("bottom")
+                  ? "!mb-[168px]"
+                  : "!mt-[168px]"
+                : ""
+            }`}
+          />
+        )}
+        {showMinimap && (
+          <MiniMap
+            position={minimapPosition}
+            nodeStrokeWidth={3}
+            zoomable
+            pannable
+            className="!w-[200px] !h-[140px] !m-4 !bg-white/90 dark:!bg-slate-900/90 !border !border-slate-200 dark:!border-slate-800 rounded-lg overflow-hidden shadow-sm backdrop-blur-xs"
+            nodeColor={() => (theme === "dark" ? "#3b82f6" : "#60a5fa")}
+            maskColor={
+              theme === "dark"
+                ? "rgba(15, 23, 42, 0.7)"
+                : "rgba(241, 245, 249, 0.7)"
+            }
+          />
+        )}
       </ReactFlow>
     </div>
   );
