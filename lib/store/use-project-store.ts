@@ -639,6 +639,31 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
     },
 
     addRelation: (rel) => {
+      const { project } = get();
+      if (!project) return;
+
+      // 1. Prevent duplicate relations
+      const exists = project.schema.relations.some(
+        (r) =>
+          (r.sourceTable === rel.sourceTable &&
+            r.sourceColumn === rel.sourceColumn &&
+            r.targetTable === rel.targetTable &&
+            r.targetColumn === rel.targetColumn) ||
+          (r.sourceTable === rel.targetTable &&
+            r.sourceColumn === rel.targetColumn &&
+            r.targetTable === rel.sourceTable &&
+            r.targetColumn === rel.sourceColumn),
+      );
+      if (exists) return;
+
+      // 2. Prevent connecting column to itself
+      if (
+        rel.sourceTable === rel.targetTable &&
+        rel.sourceColumn === rel.targetColumn
+      ) {
+        return;
+      }
+
       const newRel: RelationDefinition = {
         ...rel,
         id: `ref_${rel.sourceTable}_${rel.sourceColumn}_${rel.targetTable}_${rel.targetColumn}_${Date.now()}`,

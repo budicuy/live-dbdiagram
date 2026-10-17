@@ -148,6 +148,41 @@ describe("Schema Validator", () => {
       diagnostics.some((d) => d.message.includes("non_existent_table")),
     ).toBe(true);
   });
+
+  it("detects invalid self-referencing relation connecting a column to itself", () => {
+    const invalidSelfSchema = {
+      dialect: "postgres" as const,
+      tables: [
+        {
+          id: "categories",
+          name: "categories",
+          columns: [
+            { id: "c1", name: "id", type: "int", pk: true },
+            { id: "c2", name: "parent_id", type: "int" },
+          ],
+        },
+      ],
+      relations: [
+        {
+          id: "r_invalid_self",
+          sourceTable: "categories",
+          sourceColumn: "id",
+          targetTable: "categories",
+          targetColumn: "id",
+          cardinality: "many-to-one" as const,
+        },
+      ],
+    };
+
+    const diagnostics = validateSchema(invalidSelfSchema);
+    expect(
+      diagnostics.some((d) =>
+        d.message.includes(
+          "tidak dapat mereferensikan kolom 'id' ke dirinya sendiri",
+        ),
+      ),
+    ).toBe(true);
+  });
 });
 
 describe("SQL Importer and Exporter", () => {

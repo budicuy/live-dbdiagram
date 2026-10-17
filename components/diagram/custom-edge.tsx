@@ -44,6 +44,21 @@ export const CustomEdge = memo(
       borderRadius: 16,
     });
 
+    const isSelfLoop = Math.abs(sourceX - targetX) < 10;
+    let path = edgePath;
+    let lx = labelX;
+    let ly = labelY;
+
+    if (isSelfLoop) {
+      const radius = 45;
+      const isLeft = sourcePosition === "left" || targetPosition === "left";
+      const direction = isLeft ? -1 : 1;
+      const loopX = sourceX + direction * radius;
+      path = `M ${sourceX} ${sourceY} C ${loopX} ${sourceY}, ${loopX} ${targetY}, ${targetX} ${targetY}`;
+      lx = loopX + direction * 8;
+      ly = (sourceY + targetY) / 2;
+    }
+
     const getCardinalityLabel = (card?: Cardinality) => {
       switch (card) {
         case "one-to-one":
@@ -70,7 +85,7 @@ export const CustomEdge = memo(
       <>
         <BaseEdge
           id={id}
-          path={edgePath}
+          path={path}
           className={cn(
             "transition-colors cursor-pointer",
             selected
@@ -84,7 +99,7 @@ export const CustomEdge = memo(
             onClick={handleEdgeClick}
             style={{
               position: "absolute",
-              transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
+              transform: `translate(-50%, -50%) translate(${lx}px,${ly}px)`,
               pointerEvents: "all",
             }}
             className={cn(

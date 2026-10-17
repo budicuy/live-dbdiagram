@@ -93,21 +93,114 @@ export function ErdCanvas() {
     [updateTablePosition],
   );
 
+  // Validate connections before they can be dropped
+  const isValidConnection = useCallback(
+    (connection: Connection | Edge) => {
+      if (!connection.source || !connection.target) return false;
+      if (!connection.sourceHandle || !connection.targetHandle) return false;
+
+      // 1. Cannot connect column to itself
+      if (
+        connection.source === connection.target &&
+        connection.sourceHandle === connection.targetHandle
+      ) {
+        return false;
+      }
+
+      const tables = project?.schema.tables || [];
+      const sourceTable = tables.find(
+        (t) => t.name === connection.source || t.id === connection.source,
+      );
+      const targetTable = tables.find(
+        (t) => t.name === connection.target || t.id === connection.target,
+      );
+
+      if (!sourceTable || !targetTable) return false;
+
+      const sourceCol = sourceTable.columns.find(
+        (c) => c.name === connection.sourceHandle,
+      );
+      const targetCol = targetTable.columns.find(
+        (c) => c.name === connection.targetHandle,
+      );
+
+      if (!sourceCol || !targetCol) return false;
+
+      // 2. If same table (self-reference), at least one column MUST be a Primary Key (e.g. parent_id -> id)
+      if (connection.source === connection.target) {
+        const hasPk = sourceCol.pk || targetCol.pk;
+        if (!hasPk) {
+          return false;
+        }
+      }
+
+      // 3. Prevent duplicate relations
+      const existingRelations = project?.schema.relations || [];
+      const isDuplicate = existingRelations.some(
+        (r) =>
+          (r.sourceTable === connection.source &&
+            r.sourceColumn === connection.sourceHandle &&
+            r.targetTable === connection.target &&
+            r.targetColumn === connection.targetHandle) ||
+          (r.sourceTable === connection.target &&
+            r.sourceColumn === connection.targetHandle &&
+            r.targetTable === connection.source &&
+            r.targetColumn === connection.sourceHandle),
+      );
+
+      if (isDuplicate) {
+        return false;
+      }
+
+      return true;
+    },
+    [project],
+  );
+
   // Connect handle to handle to form a foreign key relation
   const onConnect = useCallback(
     (connection: Connection) => {
+      if (!isValidConnection(connection)) return;
       if (!connection.source || !connection.target) return;
       if (!connection.sourceHandle || !connection.targetHandle) return;
 
+      const tables = project?.schema.tables || [];
+      const sourceTable = tables.find(
+        (t) => t.name === connection.source || t.id === connection.source,
+      );
+      const targetTable = tables.find(
+        (t) => t.name === connection.target || t.id === connection.target,
+      );
+
+      const sourceCol = sourceTable?.columns.find(
+        (c) => c.name === connection.sourceHandle,
+      );
+      const targetCol = targetTable?.columns.find(
+        (c) => c.name === connection.targetHandle,
+      );
+
+      // If source is PK and target is not, normalize so FK points to PK (standard N:1)
+      let finalSource = connection.source;
+      let finalSourceHandle = connection.sourceHandle;
+      let finalTarget = connection.target;
+      let finalTargetHandle = connection.targetHandle;
+
+      if (sourceCol?.pk && !targetCol?.pk) {
+        finalSource = connection.target;
+        finalSourceHandle = connection.targetHandle;
+        finalTarget = connection.source;
+        finalTargetHandle = connection.sourceHandle;
+      }
+
       addRelation({
-        sourceTable: connection.source,
-        sourceColumn: connection.sourceHandle,
-        targetTable: connection.target,
-        targetColumn: connection.targetHandle,
+        sourceTable: finalSource,
+        sourceColumn: finalSourceHandle,
+        targetTable: finalTarget,
+        targetColumn: finalTargetHandle,
         cardinality: "many-to-one",
       });
     },
-    [addRelation],
+    [addRelation, isValidConnection, project],
   );
 
   const onPaneClick = useCallback(() => {
@@ -126,6 +219,7 @@ export function ErdCanvas() {
         onEdgesChange={onEdgesChange}
         onNodeDragStop={onNodeDragStop}
         onConnect={onConnect}
+        isValidConnection={isValidConnection}
         onPaneClick={onPaneClick}
         fitView
         minZoom={0.2}

@@ -78,6 +78,40 @@ export function validateSchema(schema: DatabaseSchema): SchemaDiagnostic[] {
         severity: "error",
       });
     }
+
+    // Check self-referencing relation
+    if (srcTable === tgtTable) {
+      if (
+        rel.sourceColumn &&
+        rel.targetColumn &&
+        rel.sourceColumn.toLowerCase() === rel.targetColumn.toLowerCase()
+      ) {
+        diagnostics.push({
+          message: `Relasi pada tabel '${rel.sourceTable}' tidak dapat mereferensikan kolom '${rel.sourceColumn}' ke dirinya sendiri.`,
+          severity: "error",
+        });
+      }
+    }
+  }
+
+  // Check duplicate relations
+  const seenSignatures = new Set<string>();
+  for (const rel of schema.relations) {
+    const sTable = rel.sourceTable.toLowerCase();
+    const sCol = rel.sourceColumn.toLowerCase();
+    const tTable = rel.targetTable.toLowerCase();
+    const tCol = rel.targetColumn.toLowerCase();
+
+    const forward = `${sTable}.${sCol}->${tTable}.${tCol}`;
+    const reverse = `${tTable}.${tCol}->${sTable}.${sCol}`;
+
+    if (seenSignatures.has(forward) || seenSignatures.has(reverse)) {
+      diagnostics.push({
+        message: `Relasi antara '${rel.sourceTable}.${rel.sourceColumn}' dan '${rel.targetTable}.${rel.targetColumn}' terdefinisi lebih dari satu kali.`,
+        severity: "warning",
+      });
+    }
+    seenSignatures.add(forward);
   }
 
   return diagnostics;
