@@ -4,15 +4,20 @@ import {
   Background,
   BackgroundVariant,
   type Connection,
+  ConnectionMode,
   Controls,
   type Edge,
+  type EdgeChange,
   MiniMap,
   type Node,
   ReactFlow,
-  useEdgesState,
   useNodesState,
 } from "@xyflow/react";
 import { useCallback, useEffect, useMemo } from "react";
+import {
+  computeSmartEdges,
+  extractColumnName,
+} from "../../lib/diagram/smart-routing";
 import { useProjectStore } from "../../lib/store/use-project-store";
 import { CustomEdge } from "./custom-edge";
 import { TableNode } from "./table-node";
@@ -31,6 +36,7 @@ export function ErdCanvas() {
   const selectedRelationId = useProjectStore((s) => s.selectedRelationId);
   const updateTablePosition = useProjectStore((s) => s.updateTablePosition);
   const addRelation = useProjectStore((s) => s.addRelation);
+  const deleteRelation = useProjectStore((s) => s.deleteRelation);
   const setSelectedTableId = useProjectStore((s) => s.setSelectedTableId);
   const setSelectedRelationId = useProjectStore((s) => s.setSelectedRelationId);
   const theme = useProjectStore((s) => s.ui.theme);
@@ -52,35 +58,33 @@ export function ErdCanvas() {
     });
   }, [project, selectedTableId]);
 
-  // Transform relations to React Flow edges
-  const initialEdges: Edge[] = useMemo(() => {
-    if (!project) return [];
-    return project.schema.relations.map((rel) => ({
-      id: rel.id,
-      source: rel.sourceTable,
-      sourceHandle: rel.sourceColumn,
-      target: rel.targetTable,
-      targetHandle: rel.targetColumn,
-      type: "customEdge",
-      data: {
-        cardinality: rel.cardinality,
-        relationId: rel.id,
-      },
-      selected: selectedRelationId === rel.id,
-    }));
-  }, [project, selectedRelationId]);
-
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
 
-  // Sync internal state when project changes
+  // Sync internal nodes state when project tables change
   useEffect(() => {
     setNodes(initialNodes);
   }, [initialNodes, setNodes]);
 
-  useEffect(() => {
-    setEdges(initialEdges);
-  }, [initialEdges, setEdges]);
+  // Dynamically compute smart nearest-side edges based on live node positions
+  const edges: Edge[] = useMemo(() => {
+    if (!project) return [];
+    return computeSmartEdges(
+      project.schema.relations,
+      nodes,
+      selectedRelationId,
+    );
+  }, [project, nodes, selectedRelationId]);
+
+  const onEdgesChange = useCallback(
+    (changes: EdgeChange[]) => {
+      for (const change of changes) {
+        if (change.type === "remove") {
+          deleteRelation(change.id);
+        }
+      }
+    },
+    [deleteRelation],
+  );
 
   // When node drag finishes, persist position in store
   const onNodeDragStop = useCallback(
@@ -99,10 +103,13 @@ export function ErdCanvas() {
       if (!connection.source || !connection.target) return false;
       if (!connection.sourceHandle || !connection.targetHandle) return false;
 
+      const sourceColName = extractColumnName(connection.sourceHandle);
+      const targetColName = extractColumnName(connection.targetHandle);
+
       // 1. Cannot connect column to itself
       if (
         connection.source === connection.target &&
-        connection.sourceHandle === connection.targetHandle
+        sourceColName === targetColName
       ) {
         return false;
       }
@@ -118,10 +125,10 @@ export function ErdCanvas() {
       if (!sourceTable || !targetTable) return false;
 
       const sourceCol = sourceTable.columns.find(
-        (c) => c.name === connection.sourceHandle,
+        (c) => c.name === sourceColName,
       );
       const targetCol = targetTable.columns.find(
-        (c) => c.name === connection.targetHandle,
+        (c) => c.name === targetColName,
       );
 
       if (!sourceCol || !targetCol) return false;
@@ -139,13 +146,13 @@ export function ErdCanvas() {
       const isDuplicate = existingRelations.some(
         (r) =>
           (r.sourceTable === connection.source &&
-            r.sourceColumn === connection.sourceHandle &&
+            r.sourceColumn === sourceColName &&
             r.targetTable === connection.target &&
-            r.targetColumn === connection.targetHandle) ||
+            r.targetColumn === targetColName) ||
           (r.sourceTable === connection.target &&
-            r.sourceColumn === connection.targetHandle &&
+            r.sourceColumn === targetColName &&
             r.targetTable === connection.source &&
-            r.targetColumn === connection.sourceHandle),
+            r.targetColumn === sourceColName),
       );
 
       if (isDuplicate) {
@@ -164,6 +171,9 @@ export function ErdCanvas() {
       if (!connection.source || !connection.target) return;
       if (!connection.sourceHandle || !connection.targetHandle) return;
 
+      const sourceColName = extractColumnName(connection.sourceHandle);
+      const targetColName = extractColumnName(connection.targetHandle);
+
       const tables = project?.schema.tables || [];
       const sourceTable = tables.find(
         (t) => t.name === connection.source || t.id === connection.source,
@@ -173,23 +183,23 @@ export function ErdCanvas() {
       );
 
       const sourceCol = sourceTable?.columns.find(
-        (c) => c.name === connection.sourceHandle,
+        (c) => c.name === sourceColName,
       );
       const targetCol = targetTable?.columns.find(
-        (c) => c.name === connection.targetHandle,
+        (c) => c.name === targetColName,
       );
 
       // If source is PK and target is not, normalize so FK points to PK (standard N:1)
       let finalSource = connection.source;
-      let finalSourceHandle = connection.sourceHandle;
+      let finalSourceHandle = sourceColName;
       let finalTarget = connection.target;
-      let finalTargetHandle = connection.targetHandle;
+      let finalTargetHandle = targetColName;
 
       if (sourceCol?.pk && !targetCol?.pk) {
         finalSource = connection.target;
-        finalSourceHandle = connection.targetHandle;
+        finalSourceHandle = targetColName;
         finalTarget = connection.source;
-        finalTargetHandle = connection.sourceHandle;
+        finalTargetHandle = sourceColName;
       }
 
       addRelation({
@@ -219,6 +229,7 @@ export function ErdCanvas() {
         onEdgesChange={onEdgesChange}
         onNodeDragStop={onNodeDragStop}
         onConnect={onConnect}
+        connectionMode={ConnectionMode.Loose}
         isValidConnection={isValidConnection}
         onPaneClick={onPaneClick}
         fitView

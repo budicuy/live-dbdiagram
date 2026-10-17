@@ -15,6 +15,8 @@ import { cn } from "../../lib/utils";
 interface CustomEdgeData {
   cardinality?: Cardinality;
   relationId?: string;
+  isSelf?: boolean;
+  inverted?: boolean;
 }
 
 export const CustomEdge = memo(
@@ -34,20 +36,10 @@ export const CustomEdge = memo(
       (s) => s.setSelectedRelationId,
     );
 
-    const [edgePath, labelX, labelY] = getSmoothStepPath({
-      sourceX,
-      sourceY,
-      sourcePosition,
-      targetX,
-      targetY,
-      targetPosition,
-      borderRadius: 16,
-    });
-
-    const isSelfLoop = Math.abs(sourceX - targetX) < 10;
-    let path = edgePath;
-    let lx = labelX;
-    let ly = labelY;
+    const isSelfLoop = Boolean(edgeData?.isSelf);
+    let path = "";
+    let lx = 0;
+    let ly = 0;
 
     if (isSelfLoop) {
       const radius = 45;
@@ -57,20 +49,33 @@ export const CustomEdge = memo(
       path = `M ${sourceX} ${sourceY} C ${loopX} ${sourceY}, ${loopX} ${targetY}, ${targetX} ${targetY}`;
       lx = loopX + direction * 8;
       ly = (sourceY + targetY) / 2;
+    } else {
+      const [edgePath, labelX, labelY] = getSmoothStepPath({
+        sourceX,
+        sourceY,
+        sourcePosition,
+        targetX,
+        targetY,
+        targetPosition,
+        borderRadius: 16,
+      });
+      path = edgePath;
+      lx = labelX;
+      ly = labelY;
     }
 
-    const getCardinalityLabel = (card?: Cardinality) => {
+    const getCardinalityLabel = (card?: Cardinality, inverted?: boolean) => {
       switch (card) {
         case "one-to-one":
           return "1 : 1";
         case "one-to-many":
-          return "1 : N";
+          return inverted ? "N : 1" : "1 : N";
         case "many-to-one":
-          return "N : 1";
+          return inverted ? "1 : N" : "N : 1";
         case "many-to-many":
-          return "N : M";
+          return inverted ? "M : N" : "N : M";
         default:
-          return "N : 1";
+          return inverted ? "1 : N" : "N : 1";
       }
     };
 
@@ -109,7 +114,7 @@ export const CustomEdge = memo(
                 : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-blue-400",
             )}
           >
-            {getCardinalityLabel(edgeData?.cardinality)}
+            {getCardinalityLabel(edgeData?.cardinality, edgeData?.inverted)}
           </button>
         </EdgeLabelRenderer>
       </>

@@ -95,7 +95,7 @@ export const TableNode = memo(({ data, selected }: TableNodeProps) => {
             <Handle
               type="target"
               position={Position.Left}
-              id={col.name}
+              id={`${col.name}-left`}
               className="!w-2 !h-2 !-left-1 !bg-blue-500 !border-white dark:!border-slate-900"
             />
 
@@ -148,7 +148,7 @@ export const TableNode = memo(({ data, selected }: TableNodeProps) => {
             <Handle
               type="source"
               position={Position.Right}
-              id={col.name}
+              id={`${col.name}-right`}
               className="!w-2 !h-2 !-right-1 !bg-blue-500 !border-white dark:!border-slate-900"
             />
           </div>
