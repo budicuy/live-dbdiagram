@@ -11,7 +11,9 @@ import {
   MiniMap,
   type Node,
   ReactFlow,
+  ReactFlowProvider,
   useNodesState,
+  useReactFlow,
 } from "@xyflow/react";
 import { useCallback, useEffect, useMemo } from "react";
 import {
@@ -30,10 +32,11 @@ const edgeTypes = {
   customEdge: CustomEdge,
 };
 
-export function ErdCanvas() {
+function ErdCanvasContent() {
   const project = useProjectStore((s) => s.project);
   const selectedTableId = useProjectStore((s) => s.selectedTableId);
   const selectedRelationId = useProjectStore((s) => s.selectedRelationId);
+  const canvasFocusTarget = useProjectStore((s) => s.canvasFocusTarget);
   const updateTablePosition = useProjectStore((s) => s.updateTablePosition);
   const addRelation = useProjectStore((s) => s.addRelation);
   const deleteRelation = useProjectStore((s) => s.deleteRelation);
@@ -44,6 +47,25 @@ export function ErdCanvas() {
   const minimapPosition = useProjectStore((s) => s.ui.minimapPosition);
   const showControls = useProjectStore((s) => s.ui.showControls);
   const controlsPosition = useProjectStore((s) => s.ui.controlsPosition);
+
+  const { fitView } = useReactFlow();
+
+  // Smooth camera pan to focus on target table node
+  useEffect(() => {
+    if (!canvasFocusTarget?.tableId) return;
+    const targetId = canvasFocusTarget.tableId;
+
+    const timer = setTimeout(() => {
+      fitView({
+        nodes: [{ id: targetId }],
+        duration: 500,
+        padding: 0.35,
+        maxZoom: 1.1,
+      });
+    }, 60);
+
+    return () => clearTimeout(timer);
+  }, [canvasFocusTarget, fitView]);
 
   // Transform tables to React Flow nodes
   const initialNodes: Node[] = useMemo(() => {
@@ -280,5 +302,13 @@ export function ErdCanvas() {
         )}
       </ReactFlow>
     </div>
+  );
+}
+
+export function ErdCanvas() {
+  return (
+    <ReactFlowProvider>
+      <ErdCanvasContent />
+    </ReactFlowProvider>
   );
 }

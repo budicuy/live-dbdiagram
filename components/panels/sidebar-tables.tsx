@@ -1,7 +1,7 @@
 "use client";
 
 import { Key, Link2, Plus, Search, Table2, Trash2, X } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useProjectStore } from "../../lib/store/use-project-store";
 import { cn } from "../../lib/utils";
 
@@ -10,7 +10,9 @@ export function SidebarTables() {
   const toggleSidebar = useProjectStore((s) => s.toggleSidebar);
   const project = useProjectStore((s) => s.project);
   const selectedTableId = useProjectStore((s) => s.selectedTableId);
-  const setSelectedTableId = useProjectStore((s) => s.setSelectedTableId);
+  const selectAndNavigateTable = useProjectStore(
+    (s) => s.selectAndNavigateTable,
+  );
   const addTable = useProjectStore((s) => s.addTable);
   const deleteTable = useProjectStore((s) => s.deleteTable);
 
@@ -18,6 +20,19 @@ export function SidebarTables() {
 
   const tables = project?.schema.tables || [];
   const relations = project?.schema.relations || [];
+
+  // Auto scroll to selected table item in sidebar list
+  useEffect(() => {
+    if (!selectedTableId || !ui.sidebarOpen) return;
+    const timer = setTimeout(() => {
+      const el = document.getElementById(`sidebar-table-${selectedTableId}`);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }
+    }, 60);
+
+    return () => clearTimeout(timer);
+  }, [selectedTableId, ui.sidebarOpen]);
 
   // Filter tables by table name or column names
   const filteredTables = useMemo(() => {
@@ -101,7 +116,10 @@ export function SidebarTables() {
           return (
             <div
               key={t.id}
-              onClick={() => setSelectedTableId(t.name)}
+              id={`sidebar-table-${t.name}`}
+              onClick={() =>
+                selectAndNavigateTable(t.name, undefined, { focusCanvas: true })
+              }
               className={cn(
                 "group flex items-center justify-between px-2.5 py-2 rounded-md cursor-pointer transition-colors",
                 isSelected

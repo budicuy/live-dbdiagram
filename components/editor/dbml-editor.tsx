@@ -45,6 +45,20 @@ export function DbmlEditor() {
       renderLineHighlight: "all",
       padding: { top: 12, bottom: 12 },
     });
+
+    // Jump to target line if set while editor was opening
+    const target = useProjectStore.getState().editorTargetLine;
+    if (target) {
+      setTimeout(() => {
+        editor.revealLineInCenter(target.line);
+        editor.setPosition({
+          lineNumber: target.line,
+          column: target.column ?? 1,
+        });
+        editor.focus();
+        useProjectStore.getState().clearEditorTargetLine();
+      }, 100);
+    }
   };
 
   // Sync Diagnostics to Monaco markers
@@ -69,17 +83,20 @@ export function DbmlEditor() {
     monaco.editor.setModelMarkers(model, "dbml", markers);
   }, [diagnostics]);
 
-  // Handle programmatic line jump from problems panel / header pill
+  // Handle programmatic line jump from problems panel / header pill / diagram click
   useEffect(() => {
     if (!editorTargetLine || !editorRef.current) return;
     const { line, column = 1 } = editorTargetLine;
     const editor = editorRef.current;
 
-    editor.revealLineInCenter(line);
-    editor.setPosition({ lineNumber: line, column });
-    editor.focus();
+    const timer = setTimeout(() => {
+      editor.revealLineInCenter(line);
+      editor.setPosition({ lineNumber: line, column });
+      editor.focus();
+    }, 50);
 
     clearEditorTargetLine();
+    return () => clearTimeout(timer);
   }, [editorTargetLine, clearEditorTargetLine]);
 
   // Handle text changes with debounce

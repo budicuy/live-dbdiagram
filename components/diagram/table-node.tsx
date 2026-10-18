@@ -19,13 +19,22 @@ interface TableNodeProps {
 
 export const TableNode = memo(({ data, selected }: TableNodeProps) => {
   const { table } = data;
-  const setSelectedTableId = useProjectStore((s) => s.setSelectedTableId);
+  const selectedColumnName = useProjectStore((s) => s.selectedColumnName);
+  const selectAndNavigateTable = useProjectStore(
+    (s) => s.selectAndNavigateTable,
+  );
   const deleteTable = useProjectStore((s) => s.deleteTable);
   const addColumn = useProjectStore((s) => s.addColumn);
 
-  const handleNodeClick = (e: React.MouseEvent) => {
+  const handleTableClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setSelectedTableId(table.name);
+    selectAndNavigateTable(table.name, undefined, { openPanels: true });
+  };
+
+  const handleColumnClick = (e: React.MouseEvent, colName: string) => {
+    if ((e.target as HTMLElement).closest(".react-flow__handle")) return;
+    e.stopPropagation();
+    selectAndNavigateTable(table.name, colName, { openPanels: true });
   };
 
   const handleAddColumn = (e: React.MouseEvent) => {
@@ -42,7 +51,7 @@ export const TableNode = memo(({ data, selected }: TableNodeProps) => {
 
   return (
     <div
-      onClick={handleNodeClick}
+      onClick={handleTableClick}
       className={cn(
         "group min-w-[240px] max-w-[320px] rounded-lg border bg-white dark:bg-slate-900 shadow-md transition-all select-none text-xs",
         selected
@@ -86,73 +95,82 @@ export const TableNode = memo(({ data, selected }: TableNodeProps) => {
 
       {/* Columns List */}
       <div className="py-1 divide-y divide-slate-100 dark:divide-slate-800/50">
-        {table.columns.map((col) => (
-          <div
-            key={col.id}
-            className="relative flex items-center justify-between px-3 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors"
-          >
-            {/* Left Handle */}
-            <Handle
-              type="source"
-              position={Position.Left}
-              id={`${col.name}-left`}
-              className="!w-2 !h-2 !-left-1 !bg-blue-500 !border-white dark:!border-slate-900"
-            />
-
-            {/* Left: Key & Name */}
-            <div className="flex items-center gap-1.5 overflow-hidden pr-2">
-              {col.pk ? (
-                <span title="Primary Key">
-                  <Key className="w-3 h-3 text-amber-500 shrink-0" />
-                </span>
-              ) : (
-                <span className="w-3" />
+        {table.columns.map((col) => {
+          const isColSelected = selected && selectedColumnName === col.name;
+          return (
+            <div
+              key={col.id}
+              onClick={(e) => handleColumnClick(e, col.name)}
+              className={cn(
+                "relative flex items-center justify-between px-3 py-1.5 transition-colors cursor-pointer",
+                isColSelected
+                  ? "bg-blue-50/90 dark:bg-blue-950/60 ring-1 ring-inset ring-blue-500/40"
+                  : "hover:bg-slate-50 dark:hover:bg-slate-800/40",
               )}
-              <span
-                className={cn(
-                  "font-mono truncate",
-                  col.pk
-                    ? "font-semibold text-slate-900 dark:text-slate-100"
-                    : "text-slate-700 dark:text-slate-300",
+            >
+              {/* Left Handle */}
+              <Handle
+                type="source"
+                position={Position.Left}
+                id={`${col.name}-left`}
+                className="!w-2 !h-2 !-left-1 !bg-blue-500 !border-white dark:!border-slate-900"
+              />
+
+              {/* Left: Key & Name */}
+              <div className="flex items-center gap-1.5 overflow-hidden pr-2">
+                {col.pk ? (
+                  <span title="Primary Key">
+                    <Key className="w-3 h-3 text-amber-500 shrink-0" />
+                  </span>
+                ) : (
+                  <span className="w-3" />
                 )}
-                title={col.name}
-              >
-                {col.name}
-              </span>
-            </div>
-
-            {/* Right: Type & Constraints */}
-            <div className="flex items-center gap-1.5 shrink-0">
-              <span className="font-mono text-[11px] text-slate-400 dark:text-slate-500">
-                {col.type}
-              </span>
-              {col.notNull && !col.pk && (
                 <span
-                  title="NOT NULL"
-                  className="text-[9px] font-mono px-1 rounded bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400"
+                  className={cn(
+                    "font-mono truncate",
+                    col.pk
+                      ? "font-semibold text-slate-900 dark:text-slate-100"
+                      : "text-slate-700 dark:text-slate-300",
+                  )}
+                  title={col.name}
                 >
-                  NN
+                  {col.name}
                 </span>
-              )}
-              {col.unique && !col.pk && (
-                <span
-                  title="UNIQUE"
-                  className="text-[9px] font-mono px-1 rounded bg-purple-100 dark:bg-purple-950 text-purple-600 dark:text-purple-400"
-                >
-                  UQ
-                </span>
-              )}
-            </div>
+              </div>
 
-            {/* Source Handle (Right) */}
-            <Handle
-              type="source"
-              position={Position.Right}
-              id={`${col.name}-right`}
-              className="!w-2 !h-2 !-right-1 !bg-blue-500 !border-white dark:!border-slate-900"
-            />
-          </div>
-        ))}
+              {/* Right: Type & Constraints */}
+              <div className="flex items-center gap-1.5 shrink-0">
+                <span className="font-mono text-[11px] text-slate-400 dark:text-slate-500">
+                  {col.type}
+                </span>
+                {col.notNull && !col.pk && (
+                  <span
+                    title="NOT NULL"
+                    className="text-[9px] font-mono px-1 rounded bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400"
+                  >
+                    NN
+                  </span>
+                )}
+                {col.unique && !col.pk && (
+                  <span
+                    title="UNIQUE"
+                    className="text-[9px] font-mono px-1 rounded bg-purple-100 dark:bg-purple-950 text-purple-600 dark:text-purple-400"
+                  >
+                    UQ
+                  </span>
+                )}
+              </div>
+
+              {/* Source Handle (Right) */}
+              <Handle
+                type="source"
+                position={Position.Right}
+                id={`${col.name}-right`}
+                className="!w-2 !h-2 !-right-1 !bg-blue-500 !border-white dark:!border-slate-900"
+              />
+            </div>
+          );
+        })}
 
         {table.columns.length === 0 && (
           <div className="px-3 py-2 text-center text-slate-400 italic text-[11px]">

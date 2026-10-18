@@ -1,7 +1,7 @@
 "use client";
 
 import { Check, Database, Plus, Sliders, Trash2, X } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useProjectStore } from "../../lib/store/use-project-store";
 import type { Cardinality } from "../../lib/types/schema";
 import { cn } from "../../lib/utils";
@@ -34,10 +34,10 @@ export function InspectorPanel() {
   const toggleInspector = useProjectStore((s) => s.toggleInspector);
   const project = useProjectStore((s) => s.project);
   const selectedTableId = useProjectStore((s) => s.selectedTableId);
+  const selectedColumnName = useProjectStore((s) => s.selectedColumnName);
   const selectedRelationId = useProjectStore((s) => s.selectedRelationId);
-  const _setSelectedTableId = useProjectStore((s) => s.setSelectedTableId);
-  const _setSelectedRelationId = useProjectStore(
-    (s) => s.setSelectedRelationId,
+  const selectAndNavigateTable = useProjectStore(
+    (s) => s.selectAndNavigateTable,
   );
 
   const renameTable = useProjectStore((s) => s.renameTable);
@@ -50,6 +50,23 @@ export function InspectorPanel() {
 
   const [tableNameInput, setTableNameInput] = useState("");
   const [editingTableName, setEditingTableName] = useState(false);
+
+  // Automatically scroll and focus the selected column input in the inspector
+  useEffect(() => {
+    if (!selectedColumnName || !ui.inspectorOpen) return;
+    const timer = setTimeout(() => {
+      const el = document.getElementById(`inspector-col-${selectedColumnName}`);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        const input = el.querySelector("input");
+        if (input && document.activeElement !== input) {
+          input.focus();
+        }
+      }
+    }, 60);
+
+    return () => clearTimeout(timer);
+  }, [selectedColumnName, ui.inspectorOpen]);
 
   if (!ui.inspectorOpen) return null;
 
@@ -154,133 +171,150 @@ export function InspectorPanel() {
             </div>
 
             <div className="space-y-2 divide-y divide-slate-100 dark:divide-slate-800/60">
-              {currentTable.columns.map((col) => (
-                <div key={col.id} className="pt-2 space-y-2">
-                  <div className="flex items-center gap-2">
-                    {/* Column Name */}
-                    <input
-                      type="text"
-                      value={col.name}
-                      onChange={(e) =>
-                        updateColumn(currentTable.name, col.id, {
-                          name: e.target.value,
-                        })
-                      }
-                      placeholder="Nama kolom"
-                      className="flex-1 px-2 py-1 rounded bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-mono text-xs focus:border-blue-500 focus:outline-hidden"
-                    />
-
-                    {/* Column Type with datalist */}
-                    <input
-                      type="text"
-                      list={`types_${col.id}`}
-                      value={col.type}
-                      onChange={(e) =>
-                        updateColumn(currentTable.name, col.id, {
-                          type: e.target.value,
-                        })
-                      }
-                      className="w-28 px-2 py-1 rounded bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-mono text-xs focus:border-blue-500 focus:outline-hidden"
-                    />
-                    <datalist id={`types_${col.id}`}>
-                      {COMMON_DATA_TYPES.map((t) => (
-                        <option key={t} value={t} />
-                      ))}
-                    </datalist>
-
-                    {/* Delete Column Button */}
-                    <button
-                      type="button"
-                      title="Hapus kolom"
-                      onClick={() => deleteColumn(currentTable.name, col.id)}
-                      className="p-1 rounded text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-
-                  {/* Column Constraints Toggles */}
-                  <div className="flex items-center gap-3 text-[11px] text-slate-600 dark:text-slate-400 pl-1">
-                    <label className="flex items-center gap-1 cursor-pointer">
+              {currentTable.columns.map((col) => {
+                const isColSelected = selectedColumnName === col.name;
+                return (
+                  <div
+                    key={col.id}
+                    id={`inspector-col-${col.name}`}
+                    className={cn(
+                      "pt-2 pb-1 px-1.5 rounded-md space-y-2 transition-all",
+                      isColSelected
+                        ? "bg-blue-50/90 dark:bg-blue-950/50 ring-1 ring-blue-500/40 shadow-xs"
+                        : "",
+                    )}
+                  >
+                    <div className="flex items-center gap-2">
+                      {/* Column Name */}
                       <input
-                        type="checkbox"
-                        checked={Boolean(col.pk)}
+                        type="text"
+                        value={col.name}
+                        onFocus={() =>
+                          selectAndNavigateTable(currentTable.name, col.name)
+                        }
                         onChange={(e) =>
                           updateColumn(currentTable.name, col.id, {
-                            pk: e.target.checked,
+                            name: e.target.value,
                           })
                         }
-                        className="rounded text-blue-500"
+                        placeholder="Nama kolom"
+                        className="flex-1 px-2 py-1 rounded bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-mono text-xs focus:border-blue-500 focus:outline-hidden"
                       />
-                      <span
-                        className={cn(col.pk && "font-semibold text-amber-500")}
+
+                      {/* Column Type with datalist */}
+                      <input
+                        type="text"
+                        list={`types_${col.id}`}
+                        value={col.type}
+                        onChange={(e) =>
+                          updateColumn(currentTable.name, col.id, {
+                            type: e.target.value,
+                          })
+                        }
+                        className="w-28 px-2 py-1 rounded bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-mono text-xs focus:border-blue-500 focus:outline-hidden"
+                      />
+                      <datalist id={`types_${col.id}`}>
+                        {COMMON_DATA_TYPES.map((t) => (
+                          <option key={t} value={t} />
+                        ))}
+                      </datalist>
+
+                      {/* Delete Column Button */}
+                      <button
+                        type="button"
+                        title="Hapus kolom"
+                        onClick={() => deleteColumn(currentTable.name, col.id)}
+                        className="p-1 rounded text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40"
                       >
-                        PK
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+
+                    {/* Column Constraints Toggles */}
+                    <div className="flex items-center gap-3 text-[11px] text-slate-600 dark:text-slate-400 pl-1">
+                      <label className="flex items-center gap-1 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={Boolean(col.pk)}
+                          onChange={(e) =>
+                            updateColumn(currentTable.name, col.id, {
+                              pk: e.target.checked,
+                            })
+                          }
+                          className="rounded text-blue-500"
+                        />
+                        <span
+                          className={cn(
+                            col.pk && "font-semibold text-amber-500",
+                          )}
+                        >
+                          PK
+                        </span>
+                      </label>
+
+                      <label className="flex items-center gap-1 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={Boolean(col.notNull)}
+                          onChange={(e) =>
+                            updateColumn(currentTable.name, col.id, {
+                              notNull: e.target.checked,
+                            })
+                          }
+                          className="rounded text-blue-500"
+                        />
+                        <span>Not Null</span>
+                      </label>
+
+                      <label className="flex items-center gap-1 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={Boolean(col.unique)}
+                          onChange={(e) =>
+                            updateColumn(currentTable.name, col.id, {
+                              unique: e.target.checked,
+                            })
+                          }
+                          className="rounded text-blue-500"
+                        />
+                        <span>Unique</span>
+                      </label>
+
+                      <label className="flex items-center gap-1 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={Boolean(col.increment)}
+                          onChange={(e) =>
+                            updateColumn(currentTable.name, col.id, {
+                              increment: e.target.checked,
+                            })
+                          }
+                          className="rounded text-blue-500"
+                        />
+                        <span>Auto Inc</span>
+                      </label>
+                    </div>
+
+                    {/* Default Value */}
+                    <div className="flex items-center gap-2 pl-1">
+                      <span className="text-[10px] text-slate-400 w-12">
+                        Default:
                       </span>
-                    </label>
-
-                    <label className="flex items-center gap-1 cursor-pointer">
                       <input
-                        type="checkbox"
-                        checked={Boolean(col.notNull)}
+                        type="text"
+                        placeholder="e.g. 0 atau 'active'"
+                        value={col.defaultValue || ""}
                         onChange={(e) =>
                           updateColumn(currentTable.name, col.id, {
-                            notNull: e.target.checked,
+                            defaultValue: e.target.value || null,
                           })
                         }
-                        className="rounded text-blue-500"
+                        className="flex-1 px-2 py-0.5 rounded bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 font-mono text-[11px] focus:outline-hidden"
                       />
-                      <span>Not Null</span>
-                    </label>
-
-                    <label className="flex items-center gap-1 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={Boolean(col.unique)}
-                        onChange={(e) =>
-                          updateColumn(currentTable.name, col.id, {
-                            unique: e.target.checked,
-                          })
-                        }
-                        className="rounded text-blue-500"
-                      />
-                      <span>Unique</span>
-                    </label>
-
-                    <label className="flex items-center gap-1 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={Boolean(col.increment)}
-                        onChange={(e) =>
-                          updateColumn(currentTable.name, col.id, {
-                            increment: e.target.checked,
-                          })
-                        }
-                        className="rounded text-blue-500"
-                      />
-                      <span>Auto Inc</span>
-                    </label>
+                    </div>
                   </div>
-
-                  {/* Default Value */}
-                  <div className="flex items-center gap-2 pl-1">
-                    <span className="text-[10px] text-slate-400 w-12">
-                      Default:
-                    </span>
-                    <input
-                      type="text"
-                      placeholder="e.g. 0 atau 'active'"
-                      value={col.defaultValue || ""}
-                      onChange={(e) =>
-                        updateColumn(currentTable.name, col.id, {
-                          defaultValue: e.target.value || null,
-                        })
-                      }
-                      className="flex-1 px-2 py-0.5 rounded bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 font-mono text-[11px] focus:outline-hidden"
-                    />
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 

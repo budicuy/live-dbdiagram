@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { findDbmlColumnLine, findDbmlTableLine } from "../engine/dbml-locator";
 import { computeAutoLayout } from "../engine/layout";
 import { parseDbml } from "../engine/parser";
 import { serializeDbml } from "../engine/serializer";
@@ -50,6 +51,8 @@ interface ProjectStore {
   };
   selectedTableId: string | null;
   selectedRelationId: string | null;
+  selectedColumnName: string | null;
+  canvasFocusTarget: { tableId: string; timestamp: number } | null;
   ui: UIState;
   isInitialized: boolean;
 
@@ -85,9 +88,16 @@ interface ProjectStore {
   undo: () => void;
   redo: () => void;
 
-  // Selection
+  // Selection & Bidirectional Navigation
   setSelectedTableId: (id: string | null) => void;
   setSelectedRelationId: (id: string | null) => void;
+  setSelectedColumnName: (name: string | null) => void;
+  focusTableOnCanvas: (tableName: string) => void;
+  selectAndNavigateTable: (
+    tableName: string,
+    columnName?: string,
+    options?: { openPanels?: boolean; focusCanvas?: boolean },
+  ) => void;
 
   // High-Level Schema Mutations
   addTable: (name?: string) => void;
@@ -156,6 +166,8 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
     history: { past: [], future: [] },
     selectedTableId: null,
     selectedRelationId: null,
+    selectedColumnName: null,
+    canvasFocusTarget: null,
     editorTargetLine: null,
     gotoEditorLine: (line: number, column = 1) => {
       set({ editorTargetLine: { line, column } });
@@ -269,6 +281,8 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
           history: { past: [], future: [] },
           selectedTableId: null,
           selectedRelationId: null,
+          selectedColumnName: null,
+          canvasFocusTarget: null,
           saveStatus: "saved",
         });
       } catch (err) {
@@ -513,11 +527,87 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
     },
 
     setSelectedTableId: (id: string | null) => {
-      set({ selectedTableId: id, selectedRelationId: null });
+      set({
+        selectedTableId: id,
+        selectedRelationId: null,
+        selectedColumnName: null,
+      });
     },
 
     setSelectedRelationId: (id: string | null) => {
-      set({ selectedRelationId: id, selectedTableId: null });
+      set({
+        selectedRelationId: id,
+        selectedTableId: null,
+        selectedColumnName: null,
+      });
+    },
+
+    setSelectedColumnName: (name: string | null) => {
+      set({ selectedColumnName: name });
+    },
+
+    focusTableOnCanvas: (tableName: string) => {
+      set({
+        canvasFocusTarget: {
+          tableId: tableName,
+          timestamp: Date.now(),
+        },
+      });
+    },
+
+    selectAndNavigateTable: (
+      tableName: string,
+      columnName?: string,
+      options?: { openPanels?: boolean; focusCanvas?: boolean },
+    ) => {
+      const { project, ui } = get();
+
+      // 1. Update selection state
+      set({
+        selectedTableId: tableName,
+        selectedRelationId: null,
+        selectedColumnName: columnName || null,
+      });
+
+      // 2. Open Table panel (left) & Inspector panel (right) if requested
+      if (options?.openPanels) {
+        let shouldUpdateUi = false;
+
+        if (!ui.sidebarOpen) {
+          shouldUpdateUi = true;
+        }
+        if (!ui.inspectorOpen) {
+          shouldUpdateUi = true;
+        }
+
+        if (shouldUpdateUi) {
+          set((s) => ({
+            ui: {
+              ...s.ui,
+              sidebarOpen: true,
+              inspectorOpen: true,
+            },
+          }));
+          savePreferences({
+            sidebarOpen: true,
+            inspectorOpen: true,
+          });
+        }
+      }
+
+      // 3. Jump DBML code line in Editor
+      if (project?.dbml) {
+        const targetLine = columnName
+          ? findDbmlColumnLine(project.dbml, tableName, columnName)
+          : findDbmlTableLine(project.dbml, tableName);
+
+        get().gotoEditorLine(targetLine, 1);
+      }
+
+      // 4. Focus Canvas if requested
+      if (options?.focusCanvas) {
+        get().focusTableOnCanvas(tableName);
+      }
     },
 
     // High-Level Schema Mutations
