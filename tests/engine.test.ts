@@ -1,4 +1,9 @@
 import { describe, expect, it } from "vitest";
+import {
+  calculateEstimatedDimensions,
+  calculateExportTransform,
+  getDiagramBounds,
+} from "../lib/engine/canvas-exporter";
 import { computeAutoLayout } from "../lib/engine/layout";
 import { parseDbml } from "../lib/engine/parser";
 import { serializeDbml } from "../lib/engine/serializer";
@@ -537,5 +542,62 @@ describe("Project Save History & Restore", () => {
 
     // Verify previous state was pushed to past undo history
     expect(useProjectStore.getState().history.past).toContain(initialDbml);
+  });
+});
+
+describe("Canvas Exporter Dimensions & Configuration", () => {
+  it("calculates scaled dimensions correctly based on bounds and padding", () => {
+    const customBounds = { x: 0, y: 0, width: 1000, height: 600 };
+    const dim1x = calculateEstimatedDimensions(4, 50, 1, customBounds);
+    expect(dim1x.width).toBe(1100);
+    expect(dim1x.height).toBe(700);
+    expect(dim1x.scaledWidth).toBe(1100);
+    expect(dim1x.scaledHeight).toBe(700);
+
+    const dim2x = calculateEstimatedDimensions(4, 50, 2, customBounds);
+    expect(dim2x.scaledWidth).toBe(2200);
+    expect(dim2x.scaledHeight).toBe(1400);
+
+    const dim4x = calculateEstimatedDimensions(4, 20, 4, customBounds);
+    expect(dim4x.width).toBe(1040);
+    expect(dim4x.scaledWidth).toBe(4160);
+  });
+
+  it("handles fallback dimension calculation when custom bounds are not available", () => {
+    const fallbackDim = calculateEstimatedDimensions(5, 50, 1, null);
+    expect(fallbackDim.width).toBeGreaterThanOrEqual(1000);
+    expect(fallbackDim.height).toBeGreaterThanOrEqual(700);
+  });
+
+  it("calculates export transform with 1:1 scale and accurate translation", () => {
+    const bounds = { x: 200, y: 150, width: 800, height: 600 };
+    const transform = calculateExportTransform(bounds, 50);
+
+    // Padding is 50px on each side
+    expect(transform.width).toBe(900);
+    expect(transform.height).toBe(700);
+    // Translation offsets to place (200, 150) at exactly (50, 50)
+    expect(transform.x).toBe(-150);
+    expect(transform.y).toBe(-100);
+    // Crucial: Zoom must be 1.0 (natural 1:1 scale), never crushed to 0.1
+    expect(transform.zoom).toBe(1);
+  });
+
+  it("computes diagram bounds correctly from table positions fallback", () => {
+    const tables = [
+      { name: "users", columnCount: 3 },
+      { name: "posts", columnCount: 6 },
+    ];
+    const positions = {
+      users: { x: 100, y: 100 },
+      posts: { x: 600, y: 300 },
+    };
+
+    const bounds = getDiagramBounds(tables, positions);
+    expect(bounds).not.toBeNull();
+    expect(bounds?.x).toBe(100);
+    expect(bounds?.y).toBe(100);
+    expect(bounds?.width).toBeGreaterThanOrEqual(780); // 600 + 280 - 100
+    expect(bounds?.height).toBeGreaterThanOrEqual(300);
   });
 });
