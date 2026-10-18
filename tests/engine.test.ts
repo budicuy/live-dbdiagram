@@ -8,7 +8,7 @@ import { computeAutoLayout } from "../lib/engine/layout";
 import { parseDbml } from "../lib/engine/parser";
 import { serializeDbml } from "../lib/engine/serializer";
 import { exportDbmlToSql } from "../lib/engine/sql-exporter";
-import { importSqlToDbml } from "../lib/engine/sql-importer";
+import { cleanSqlForDdl, importSqlToDbml } from "../lib/engine/sql-importer";
 import { validateSchema } from "../lib/engine/validator";
 import { useProjectStore } from "../lib/store/use-project-store";
 import {
@@ -318,6 +318,72 @@ Table categories {
     const mySql = exportDbmlToSql(dbml, "mysql");
     expect(mySql).toContain("CREATE TABLE");
     expect(mySql).toContain("categories");
+  });
+
+  it("strips COPY blocks and INSERT statements without losing DDL", () => {
+    const rawSql = `
+\\restrict n6VpS9w40HLbSysggRaLv3JY5gHaQT19prsH3ROq19wJ3pPib4d5wFXCFvMvnCl
+SELECT pg_catalog.set_config('search_path', '', false);
+
+CREATE TABLE public.users (
+    id integer NOT NULL PRIMARY KEY,
+    name text NOT NULL
+);
+
+COPY public.users (id, name) FROM stdin;
+1\tAlice
+2\tBob
+3\tCharlie
+\\.
+
+INSERT INTO public.users (id, name) VALUES
+(4, 'David'),
+(5, 'Eve');
+
+LOCK TABLES users WRITE;
+UNLOCK TABLES;
+`;
+
+    const cleaned = cleanSqlForDdl(rawSql);
+    expect(cleaned.stats.copyBlocks).toBe(1);
+    expect(cleaned.stats.insertStatements).toBe(1);
+    expect(cleaned.cleanSql).toContain("CREATE TABLE public.users");
+    expect(cleaned.cleanSql).not.toContain("COPY public.users");
+    expect(cleaned.cleanSql).not.toContain("Alice");
+    expect(cleaned.cleanSql).not.toContain("David");
+    expect(cleaned.cleanSql).not.toContain("\\restrict");
+    expect(cleaned.cleanSql).not.toContain("pg_catalog.set_config");
+  });
+
+  it("imports large SQL dumps with thousands of data rows instantly without freeze", () => {
+    const manyDataRows = Array.from(
+      { length: 2000 },
+      (_, i) => `${i}\tUser_${i}`,
+    ).join("\n");
+    const dumpSql = `
+CREATE TYPE user_status AS ENUM ('active', 'inactive');
+
+CREATE TABLE users (
+  id integer PRIMARY KEY,
+  status user_status NOT NULL
+);
+
+COPY users (id, status) FROM stdin;
+${manyDataRows}
+\\.
+
+INSERT INTO users (id, status) VALUES (9999, 'active');
+`;
+
+    const start = performance.now();
+    const res = importSqlToDbml(dumpSql, "postgres");
+    const duration = performance.now() - start;
+
+    expect(res.success).toBe(true);
+    expect(res.schema?.tables.some((t) => t.name === "users")).toBe(true);
+    expect(res.warnings.some((w) => w.includes("Data baris tabel"))).toBe(true);
+    // Parsing and cleaning 2,000 data rows should be fast (well under 500ms)
+    expect(duration).toBeLessThan(1000);
   });
 });
 

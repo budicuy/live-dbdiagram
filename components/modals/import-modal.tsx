@@ -1,10 +1,17 @@
 "use client";
 
-import { AlertCircle, AlertTriangle, FileUp, Upload, X } from "lucide-react";
+import {
+  AlertCircle,
+  AlertTriangle,
+  FileUp,
+  Loader2,
+  Upload,
+  X,
+} from "lucide-react";
 import type React from "react";
 import { useState } from "react";
 import { parseDbml } from "../../lib/engine/parser";
-import { importSqlToDbml } from "../../lib/engine/sql-importer";
+import { cleanSqlForDdl, importSqlToDbml } from "../../lib/engine/sql-importer";
 import { useProjectStore } from "../../lib/store/use-project-store";
 import { type Dialect, ProjectBackupSchema } from "../../lib/types/schema";
 import { cn } from "../../lib/utils";
@@ -29,6 +36,7 @@ export function ImportModal({ open, onClose }: ImportModalProps) {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [warnings, setWarnings] = useState<string[]>([]);
   const [replaceActive, setReplaceActive] = useState(true);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   if (!open) return null;
 
@@ -38,10 +46,24 @@ export function ImportModal({ open, onClose }: ImportModalProps) {
 
     const reader = new FileReader();
     reader.onload = (event) => {
-      const text = event.target?.result as string;
-      setInputText(text);
+      const text = (event.target?.result as string) || "";
       setErrorMsg(null);
       setWarnings([]);
+
+      if (
+        file.name.toLowerCase().endsWith(".sql") ||
+        importType.startsWith("sql")
+      ) {
+        const { cleanSql, stats } = cleanSqlForDdl(text);
+        setInputText(cleanSql);
+        if (stats.copyBlocks > 0 || stats.insertStatements > 0) {
+          setWarnings([
+            `Data baris tabel (${stats.copyBlocks > 0 ? `${stats.copyBlocks} blok COPY` : ""}${stats.copyBlocks > 0 && stats.insertStatements > 0 ? ", " : ""}${stats.insertStatements > 0 ? `${stats.insertStatements} pernyataan INSERT` : ""}) telah dipangkas secara otomatis dari berkas agar memori editor tetap ringan.`,
+          ]);
+        }
+      } else {
+        setInputText(text);
+      }
     };
     reader.readAsText(file);
   };
@@ -55,6 +77,10 @@ export function ImportModal({ open, onClose }: ImportModalProps) {
       setErrorMsg("Konten impor tidak boleh kosong.");
       return;
     }
+
+    setIsProcessing(true);
+    // Yield execution to allow React to paint the loading spinner
+    await new Promise((resolve) => setTimeout(resolve, 40));
 
     try {
       if (importType === "dbml") {
@@ -134,6 +160,32 @@ export function ImportModal({ open, onClose }: ImportModalProps) {
       }
     } catch (err: any) {
       setErrorMsg(err?.message || "Terjadi kesalahan saat mengimpor.");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    if (importType !== "sql-mysql" && importType !== "sql-postgres") return;
+
+    const pastedText = e.clipboardData.getData("text");
+    if (!pastedText) return;
+
+    if (
+      pastedText.length > 20000 ||
+      /INSERT\s+(IGNORE\s+)?INTO|COPY\s+.*?FROM\s+stdin|phpMyAdmin\s+SQL\s+Dump/i.test(
+        pastedText,
+      )
+    ) {
+      const { cleanSql, stats } = cleanSqlForDdl(pastedText);
+      if (stats.ddlStatementsCount > 0) {
+        e.preventDefault();
+        setInputText(cleanSql);
+        setErrorMsg(null);
+        setWarnings([
+          `Data baris tabel (${stats.skippedLines} baris data/perintah non-DDL) berhasil dipangkas otomatis dari clipboard. Hanya ${stats.ddlStatementsCount} deklarasi skema DDL yang dimuat agar editor tetap cepat dan responsif.`,
+        ]);
+      }
     }
   };
 
@@ -261,6 +313,7 @@ export function ImportModal({ open, onClose }: ImportModalProps) {
               rows={10}
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
+              onPaste={handlePaste}
               placeholder={`Tempelkan kode ${importType.toUpperCase()} di sini...`}
               className="w-full p-2.5 rounded-lg bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-mono text-xs focus:border-blue-500 focus:outline-hidden"
             />
@@ -312,17 +365,26 @@ export function ImportModal({ open, onClose }: ImportModalProps) {
         <div className="flex items-center justify-end gap-2 px-4 py-2.5 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/90">
           <button
             type="button"
+            disabled={isProcessing}
             onClick={onClose}
-            className="px-4 py-1.5 rounded-md border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium text-xs transition-colors"
+            className="px-4 py-1.5 rounded-md border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50 text-slate-700 dark:text-slate-300 font-medium text-xs transition-colors"
           >
             Batal
           </button>
           <button
             type="button"
+            disabled={isProcessing}
             onClick={handleImport}
-            className="px-4 py-1.5 rounded-md bg-blue-500 hover:bg-blue-600 text-white font-medium text-xs shadow-xs transition-colors"
+            className="flex items-center gap-1.5 px-4 py-1.5 rounded-md bg-blue-500 hover:bg-blue-600 disabled:opacity-60 disabled:cursor-not-allowed text-white font-medium text-xs shadow-xs transition-colors"
           >
-            Mulai Impor
+            {isProcessing ? (
+              <>
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                <span>Memproses Skema...</span>
+              </>
+            ) : (
+              <span>Mulai Impor</span>
+            )}
           </button>
         </div>
       </div>
