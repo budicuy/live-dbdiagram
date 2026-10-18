@@ -184,7 +184,7 @@ export function TopNav({
               type="button"
               onClick={handleStartEditTitle}
               title="Klik untuk mengubah nama proyek"
-              className="font-semibold text-slate-800 dark:text-slate-200 hover:text-blue-500 truncate max-w-[160px] sm:max-w-xs transition-colors"
+              className="font-semibold text-slate-800 dark:text-slate-200 hover:text-blue-500 truncate max-w-40 sm:max-w-xs transition-colors"
             >
               {project?.name || "Memuat Proyek..."}
             </button>

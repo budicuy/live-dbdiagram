@@ -12,6 +12,11 @@ import { importSqlToDbml } from "../lib/engine/sql-importer";
 import { validateSchema } from "../lib/engine/validator";
 import { useProjectStore } from "../lib/store/use-project-store";
 import {
+  getSuggestedDataTypes,
+  isValidDataType,
+  parseBaseDataType,
+} from "../lib/types/data-types";
+import {
   ProjectBackupSchema,
   ProjectHistoryItemSchema,
 } from "../lib/types/schema";
@@ -599,5 +604,147 @@ describe("Canvas Exporter Dimensions & Configuration", () => {
     expect(bounds?.y).toBe(100);
     expect(bounds?.width).toBeGreaterThanOrEqual(780); // 600 + 280 - 100
     expect(bounds?.height).toBeGreaterThanOrEqual(300);
+  });
+});
+
+describe("Database Data Types & Validation", () => {
+  it("validates standard data types for PostgreSQL and MySQL correctly", () => {
+    // PostgreSQL valid types
+    expect(isValidDataType("integer", "postgres")).toBe(true);
+    expect(isValidDataType("varchar(255)", "postgres")).toBe(true);
+    expect(isValidDataType("decimal(10,2)", "postgres")).toBe(true);
+    expect(isValidDataType("jsonb", "postgres")).toBe(true);
+    expect(isValidDataType("uuid", "postgres")).toBe(true);
+    expect(isValidDataType("timestamptz", "postgres")).toBe(true);
+    expect(isValidDataType("integer[]", "postgres")).toBe(true);
+
+    // PostgreSQL invalid types
+    expect(isValidDataType("datetime", "postgres")).toBe(false);
+    expect(isValidDataType("tinyint", "postgres")).toBe(false);
+    expect(isValidDataType("varchr", "postgres")).toBe(false);
+    expect(isValidDataType("foobar", "postgres")).toBe(false);
+
+    // MySQL valid types
+    expect(isValidDataType("int", "mysql")).toBe(true);
+    expect(isValidDataType("tinyint(1)", "mysql")).toBe(true);
+    expect(isValidDataType("datetime", "mysql")).toBe(true);
+    expect(isValidDataType("longtext", "mysql")).toBe(true);
+    expect(isValidDataType("blob", "mysql")).toBe(true);
+    expect(isValidDataType("varchar(100)", "mysql")).toBe(true);
+
+    // MySQL invalid types
+    expect(isValidDataType("jsonb", "mysql")).toBe(false);
+    expect(isValidDataType("bytea", "mysql")).toBe(false);
+    expect(isValidDataType("integer[]", "mysql")).toBe(false);
+  });
+
+  it("parses base type, parameters, and array indicators properly", () => {
+    expect(parseBaseDataType("varchar(255)")).toEqual({
+      base: "varchar",
+      params: "255",
+      isArray: false,
+    });
+    expect(parseBaseDataType("decimal(10, 2)")).toEqual({
+      base: "decimal",
+      params: "10, 2",
+      isArray: false,
+    });
+    expect(parseBaseDataType('"double precision"')).toEqual({
+      base: "double precision",
+      params: null,
+      isArray: false,
+    });
+    expect(parseBaseDataType("integer[]")).toEqual({
+      base: "integer",
+      params: null,
+      isArray: true,
+    });
+  });
+
+  it("provides fuzzy suggestions for misspelled data types", () => {
+    const suggestions1 = getSuggestedDataTypes("varchr", "postgres");
+    expect(suggestions1).toContain("varchar");
+
+    const suggestions2 = getSuggestedDataTypes("intgerr", "postgres");
+    expect(suggestions2).toContain("integer");
+
+    const suggestions3 = getSuggestedDataTypes("timstamp", "postgres");
+    expect(suggestions3).toContain("timestamp");
+  });
+
+  it("detects invalid data type error in validateSchema with suggestions", () => {
+    const schema = {
+      dialect: "postgres" as const,
+      tables: [
+        {
+          id: "users",
+          name: "users",
+          schema: "public",
+          columns: [
+            { id: "c1", name: "id", type: "integer", pk: true },
+            { id: "c2", name: "email", type: "varchr(255)" }, // Typo
+          ],
+          indexes: [],
+        },
+      ],
+      relations: [],
+    };
+
+    const dbml = `
+Table users {
+  id integer [pk]
+  email varchr(255)
+}
+`;
+
+    const diagnostics = validateSchema(schema, dbml, "postgres");
+    const typeError = diagnostics.find(
+      (d) => d.rule === "invalid-column-type" && d.severity === "error",
+    );
+
+    expect(typeError).toBeDefined();
+    expect(typeError?.line).toBe(4); // email varchr(255) is at line 4
+    expect(typeError?.message).toContain("varchr(255)");
+    expect(typeError?.message).toContain("PostgreSQL");
+    expect(typeError?.suggestion).toContain("varchar");
+  });
+
+  it("validates postgres synonyms such as doubleprecision and float8 without error", () => {
+    expect(isValidDataType("doubleprecision", "postgres")).toBe(true);
+    expect(isValidDataType("double precision", "postgres")).toBe(true);
+    expect(isValidDataType("float8", "postgres")).toBe(true);
+    expect(isValidDataType("float4", "postgres")).toBe(true);
+    expect(isValidDataType("int8", "postgres")).toBe(true);
+    expect(isValidDataType("int4", "postgres")).toBe(true);
+    expect(isValidDataType("int2", "postgres")).toBe(true);
+    expect(isValidDataType("character varying(255)", "postgres")).toBe(true);
+    expect(isValidDataType("timestamp with time zone", "postgres")).toBe(true);
+  });
+
+  it("validates custom enums with or without schema prefix in validateSchema", () => {
+    const dbml = `
+Enum "public"."jenis_sampah" {
+  "Karton"
+  "Etiket"
+  "Paper Cup"
+}
+
+Table harga_sampah {
+  id integer [pk]
+  jenis public.jenis_sampah
+  jenis_bare jenis_sampah
+  berat doubleprecision
+}
+`;
+
+    const parsed = parseDbml(dbml, "postgres");
+    expect(parsed.success).toBe(true);
+    expect(parsed.schema).toBeDefined();
+    expect(parsed.schema?.enums?.length).toBeGreaterThanOrEqual(1);
+
+    if (!parsed.schema) throw new Error("Parsed schema is undefined");
+    const diagnostics = validateSchema(parsed.schema, dbml, "postgres");
+    const errors = diagnostics.filter((d) => d.severity === "error");
+    expect(errors.length).toBe(0);
   });
 });

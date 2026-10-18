@@ -48,9 +48,15 @@ export interface RelationDefinition {
   onUpdate?: string | null;
 }
 
+export interface EnumDefinition {
+  name: string;
+  values: string[];
+}
+
 export interface DatabaseSchema {
   tables: TableDefinition[];
   relations: RelationDefinition[];
+  enums?: EnumDefinition[];
   dialect: Dialect;
 }
 
@@ -141,9 +147,15 @@ export const RelationSchema = z.object({
   onUpdate: z.string().nullable().optional(),
 });
 
+export const EnumSchema = z.object({
+  name: z.string(),
+  values: z.array(z.string()),
+});
+
 export const DatabaseSchemaValidator = z.object({
   tables: z.array(TableSchema),
   relations: z.array(RelationSchema),
+  enums: z.array(EnumSchema).optional(),
   dialect: z.enum(["postgres", "mysql"]),
 });
 

@@ -49,7 +49,7 @@ export function MainLayout() {
 
   const sidebarLeft = sidebarOpen ? 256 : 0;
   const editorLeft = (sidebarOpen ? 256 : 0) + (editorOpen ? editorWidth : 0);
-  const inspectorRight = inspectorOpen ? 320 : 0;
+  const inspectorRight = inspectorOpen ? 352 : 0;
 
   const [projectModalOpen, setProjectModalOpen] = useState(false);
   const [importModalOpen, setImportModalOpen] = useState(false);
@@ -116,7 +116,7 @@ export function MainLayout() {
   }
 
   return (
-    <div className="flex flex-col w-screen h-screen overflow-hidden bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
+    <div className="flex flex-col w-screen max-w-full h-screen overflow-hidden overflow-x-hidden bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
       {/* Top Navbar with Collapsible Transition */}
       <div
         className={cn(
@@ -155,7 +155,7 @@ export function MainLayout() {
       </div>
 
       {/* Main Workspace: Left Sidebar + Editor + Canvas + Inspector */}
-      <div className="flex flex-1 w-full min-h-0 overflow-hidden relative">
+      <div className="flex flex-1 w-full max-w-full min-h-0 overflow-hidden relative">
         <SidebarTables />
         <EditorPanel />
         <main className="flex-1 h-full relative overflow-hidden">

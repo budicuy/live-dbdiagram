@@ -663,7 +663,7 @@ export function ExportModal({ open, onClose }: ExportModalProps) {
               </div>
 
               {/* Code Pre Area */}
-              <pre className="flex-1 w-full min-h-[220px] max-h-[360px] p-3 rounded-xl bg-slate-900 text-slate-200 border border-slate-800 font-mono text-xs overflow-auto select-text leading-relaxed">
+              <pre className="flex-1 w-full min-h-55 max-h-90 p-3 rounded-xl bg-slate-900 text-slate-200 border border-slate-800 font-mono text-xs overflow-auto select-text leading-relaxed">
                 {exportedContent}
               </pre>
             </div>

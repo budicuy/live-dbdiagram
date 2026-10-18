@@ -1,33 +1,24 @@
 "use client";
 
-import { Check, Database, Plus, Sliders, Trash2, X } from "lucide-react";
+import {
+  AlertCircle,
+  Check,
+  Database,
+  Plus,
+  Sliders,
+  Trash2,
+  X,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import { useProjectStore } from "../../lib/store/use-project-store";
+import {
+  getSuggestedDataTypes,
+  isValidDataType,
+} from "../../lib/types/data-types";
 import type { Cardinality } from "../../lib/types/schema";
 import { cn } from "../../lib/utils";
 
-const COMMON_DATA_TYPES = [
-  "integer",
-  "bigint",
-  "smallint",
-  "serial",
-  "varchar(255)",
-  "varchar(100)",
-  "varchar(50)",
-  "text",
-  "boolean",
-  "timestamp",
-  "timestamptz",
-  "date",
-  "time",
-  "decimal(10,2)",
-  "numeric",
-  "float",
-  "double",
-  "json",
-  "jsonb",
-  "uuid",
-];
+import { DataTypeSelector } from "./data-type-selector";
 
 export function InspectorPanel() {
   const ui = useProjectStore((s) => s.ui);
@@ -94,7 +85,7 @@ export function InspectorPanel() {
   };
 
   return (
-    <div className="flex flex-col w-80 h-full border-l border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0 z-10 text-xs select-none">
+    <div className="flex flex-col w-88 max-w-full h-full border-l border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0 z-10 text-xs select-none overflow-x-hidden">
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2.5 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/90">
         <div className="flex items-center gap-1.5 font-semibold text-slate-800 dark:text-slate-200">
@@ -173,18 +164,25 @@ export function InspectorPanel() {
             <div className="space-y-2 divide-y divide-slate-100 dark:divide-slate-800/60">
               {currentTable.columns.map((col) => {
                 const isColSelected = selectedColumnName === col.name;
+                const activeDialect = project?.dialect || "postgres";
+                const isTypeValid = isValidDataType(col.type, activeDialect);
+                const suggestions =
+                  !isTypeValid && col.type.trim()
+                    ? getSuggestedDataTypes(col.type, activeDialect, 3)
+                    : [];
+
                 return (
                   <div
                     key={col.id}
                     id={`inspector-col-${col.name}`}
                     className={cn(
-                      "pt-2 pb-1 px-1.5 rounded-md space-y-2 transition-all",
+                      "pt-2 pb-1.5 px-2 rounded-md space-y-2 transition-all",
                       isColSelected
                         ? "bg-blue-50/90 dark:bg-blue-950/50 ring-1 ring-blue-500/40 shadow-xs"
                         : "",
                     )}
                   >
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5 min-w-0">
                       {/* Column Name */}
                       <input
                         type="text"
@@ -198,40 +196,58 @@ export function InspectorPanel() {
                           })
                         }
                         placeholder="Nama kolom"
-                        className="flex-1 px-2 py-1 rounded bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-mono text-xs focus:border-blue-500 focus:outline-hidden"
+                        className="flex-1 min-w-0 px-2 py-1 rounded bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-mono text-xs focus:border-blue-500 focus:outline-hidden"
                       />
 
-                      {/* Column Type with datalist */}
-                      <input
-                        type="text"
-                        list={`types_${col.id}`}
+                      {/* Column Type Selector */}
+                      <DataTypeSelector
                         value={col.type}
-                        onChange={(e) =>
+                        dialect={activeDialect}
+                        className="w-32 sm:w-36 shrink-0"
+                        onChange={(newType) =>
                           updateColumn(currentTable.name, col.id, {
-                            type: e.target.value,
+                            type: newType,
                           })
                         }
-                        className="w-28 px-2 py-1 rounded bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-mono text-xs focus:border-blue-500 focus:outline-hidden"
                       />
-                      <datalist id={`types_${col.id}`}>
-                        {COMMON_DATA_TYPES.map((t) => (
-                          <option key={t} value={t} />
-                        ))}
-                      </datalist>
 
                       {/* Delete Column Button */}
                       <button
                         type="button"
                         title="Hapus kolom"
                         onClick={() => deleteColumn(currentTable.name, col.id)}
-                        className="p-1 rounded text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40"
+                        className="p-1 shrink-0 rounded text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 cursor-pointer"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     </div>
 
+                    {/* Full-width suggestions banner when type is invalid */}
+                    {!isTypeValid && suggestions.length > 0 && (
+                      <div className="flex flex-wrap items-center gap-1 text-[11px] text-red-600 dark:text-red-400 bg-red-50/80 dark:bg-red-950/40 border border-red-200/80 dark:border-red-900/50 rounded-md px-2 py-1">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0 text-red-500" />
+                        <span className="font-medium text-[10.5px]">
+                          Saran:
+                        </span>
+                        {suggestions.map((sug) => (
+                          <button
+                            key={sug}
+                            type="button"
+                            onClick={() =>
+                              updateColumn(currentTable.name, col.id, {
+                                type: sug,
+                              })
+                            }
+                            className="font-mono text-[10.5px] px-1.5 py-0.5 rounded bg-white dark:bg-slate-900 border border-red-200 dark:border-red-900/60 hover:border-blue-400 hover:text-blue-500 transition-colors cursor-pointer"
+                          >
+                            {sug}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
                     {/* Column Constraints Toggles */}
-                    <div className="flex items-center gap-3 text-[11px] text-slate-600 dark:text-slate-400 pl-1">
+                    <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11px] text-slate-600 dark:text-slate-400 pl-0.5">
                       <label className="flex items-center gap-1 cursor-pointer">
                         <input
                           type="checkbox"
@@ -296,8 +312,8 @@ export function InspectorPanel() {
                     </div>
 
                     {/* Default Value */}
-                    <div className="flex items-center gap-2 pl-1">
-                      <span className="text-[10px] text-slate-400 w-12">
+                    <div className="flex items-center gap-2 pl-0.5 min-w-0">
+                      <span className="text-[10px] text-slate-400 w-12 shrink-0">
                         Default:
                       </span>
                       <input
@@ -309,7 +325,7 @@ export function InspectorPanel() {
                             defaultValue: e.target.value || null,
                           })
                         }
-                        className="flex-1 px-2 py-0.5 rounded bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 font-mono text-[11px] focus:outline-hidden"
+                        className="flex-1 min-w-0 px-2 py-0.5 rounded bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 font-mono text-[11px] focus:outline-hidden"
                       />
                     </div>
                   </div>

@@ -1,4 +1,9 @@
-import type { DatabaseSchema, SchemaDiagnostic } from "../types/schema";
+import { getSuggestedDataTypes, isValidDataType } from "../types/data-types";
+import type {
+  DatabaseSchema,
+  Dialect,
+  SchemaDiagnostic,
+} from "../types/schema";
 
 function escapeRegex(str: string): string {
   return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -68,6 +73,57 @@ function findColumnLocation(
   return findTableLocation(dbmlLines, tableName);
 }
 
+function findColumnTypeLocation(
+  dbmlLines: string[],
+  tableName: string,
+  columnName: string,
+  colType: string,
+): { line: number; column: number } {
+  if (dbmlLines.length === 0) return { line: 1, column: 1 };
+  const tableRegex = new RegExp(
+    `^\\s*Table\\s+["']?${escapeRegex(tableName)}["']?\\b`,
+    "i",
+  );
+  let inTable = false;
+  let braceCount = 0;
+
+  for (let i = 0; i < dbmlLines.length; i++) {
+    const lineText = dbmlLines[i];
+    if (!inTable && tableRegex.test(lineText)) {
+      inTable = true;
+    }
+
+    if (inTable) {
+      if (lineText.includes("{")) braceCount++;
+      const trimmed = lineText.trim();
+      const colRegex = new RegExp(
+        `^["']?${escapeRegex(columnName)}["']?\\b`,
+        "i",
+      );
+      if (
+        colRegex.test(trimmed) &&
+        !trimmed.startsWith("Table") &&
+        !trimmed.startsWith("indexes") &&
+        !trimmed.startsWith("Note")
+      ) {
+        const typeIndex = lineText.indexOf(colType);
+        if (typeIndex >= 0) {
+          return { line: i + 1, column: typeIndex + 1 };
+        }
+        const colIndex = lineText.indexOf(columnName);
+        return { line: i + 1, column: colIndex >= 0 ? colIndex + 1 : 1 };
+      }
+      if (lineText.includes("}")) {
+        braceCount--;
+        if (braceCount <= 0) {
+          inTable = false;
+        }
+      }
+    }
+  }
+  return findTableLocation(dbmlLines, tableName);
+}
+
 function findRelationLocation(
   dbmlLines: string[],
   sourceTable: string,
@@ -94,10 +150,23 @@ function findRelationLocation(
 export function validateSchema(
   schema: DatabaseSchema,
   dbmlContent = "",
+  dialect?: Dialect,
 ): SchemaDiagnostic[] {
   const diagnostics: SchemaDiagnostic[] = [];
   const tableMap = new Map<string, Set<string>>();
   const dbmlLines = dbmlContent ? dbmlContent.split("\n") : [];
+  const activeDialect = dialect || schema.dialect || "postgres";
+
+  // Collect custom enum types defined in DBML or schema
+  const customEnums: string[] = (schema.enums || []).map((e) => e.name);
+  const enumMatches = dbmlContent.matchAll(
+    /Enum\s+["']?([a-zA-Z0-9_.]+)["']?\s*\{/gi,
+  );
+  for (const match of enumMatches) {
+    if (match[1] && !customEnums.includes(match[1])) {
+      customEnums.push(match[1]);
+    }
+  }
 
   // Check duplicate tables and column uniqueness
   for (const table of schema.tables) {
@@ -133,6 +202,35 @@ export function validateSchema(
         });
       }
       colSet.add(colNameLower);
+
+      // Validate column data type
+      if (!isValidDataType(col.type, activeDialect, customEnums)) {
+        const typeLoc = findColumnTypeLocation(
+          dbmlLines,
+          table.name,
+          col.name,
+          col.type,
+        );
+        const suggestions = getSuggestedDataTypes(
+          col.type,
+          activeDialect,
+          3,
+          customEnums,
+        );
+        const suggestionText =
+          suggestions.length > 0
+            ? `Gunakan tipe data valid seperti: ${suggestions.join(", ")}.`
+            : `Gunakan tipe data standar yang didukung oleh ${activeDialect === "postgres" ? "PostgreSQL" : "MySQL"}.`;
+
+        diagnostics.push({
+          message: `Tipe data '${col.type}' pada kolom '${col.name}' tidak valid untuk ${activeDialect === "postgres" ? "PostgreSQL" : "MySQL"}.`,
+          severity: "error",
+          line: typeLoc.line,
+          column: typeLoc.column,
+          rule: "invalid-column-type",
+          suggestion: suggestionText,
+        });
+      }
 
       if (col.pk) {
         hasPk = true;

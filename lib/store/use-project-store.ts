@@ -294,7 +294,11 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
 
         const parseRes = parseDbml(activeProject.dbml, activeProject.dialect);
         const schema = parseRes.schema || activeProject.schema;
-        const validationDiags = validateSchema(schema, activeProject.dbml);
+        const validationDiags = validateSchema(
+          schema,
+          activeProject.dbml,
+          activeProject.dialect,
+        );
         const allDiags = [...parseRes.diagnostics, ...validationDiags];
 
         set({
@@ -327,7 +331,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
         const schema = parseRes.schema || p.schema;
         const allDiags = [
           ...parseRes.diagnostics,
-          ...validateSchema(schema, p.dbml),
+          ...validateSchema(schema, p.dbml, p.dialect),
         ];
 
         set({
@@ -398,7 +402,11 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
 
       if (parseRes.success && parseRes.schema) {
         newSchema = parseRes.schema;
-        const validationDiags = validateSchema(newSchema, dbml);
+        const validationDiags = validateSchema(
+          newSchema,
+          dbml,
+          project.dialect,
+        );
         diags = [...parseRes.diagnostics, ...validationDiags];
       }
 
@@ -448,7 +456,11 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
       const currentSchema = project.schema;
       const nextSchema = updater(currentSchema);
       const newDbml = serializeDbml(nextSchema);
-      const validationDiags = validateSchema(nextSchema, newDbml);
+      const validationDiags = validateSchema(
+        nextSchema,
+        newDbml,
+        project.dialect,
+      );
 
       const newHistory = {
         past: [...history.past.slice(-20), project.dbml],
@@ -1007,7 +1019,11 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
 
       const parseRes = parseDbml(snapshot.dbml, snapshot.dialect);
       const schema = parseRes.schema || snapshot.schema;
-      const validationDiags = validateSchema(schema, snapshot.dbml);
+      const validationDiags = validateSchema(
+        schema,
+        snapshot.dbml,
+        snapshot.dialect,
+      );
       const diags = [...parseRes.diagnostics, ...validationDiags];
 
       const restoredProject: ProjectRecord = {

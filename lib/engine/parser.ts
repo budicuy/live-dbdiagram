@@ -4,6 +4,7 @@ import type {
   ColumnDefinition,
   DatabaseSchema,
   Dialect,
+  EnumDefinition,
   RelationDefinition,
   SchemaDiagnostic,
   TableDefinition,
@@ -36,9 +37,18 @@ export function parseDbml(
     const raw = Parser.parse(content, "dbml");
     const tables: TableDefinition[] = [];
     const relations: RelationDefinition[] = [];
+    const enums: EnumDefinition[] = [];
 
     const schemas = raw.schemas || [];
     for (const schema of schemas) {
+      const rawEnums = schema.enums || [];
+      for (const e of rawEnums) {
+        enums.push({
+          name: e.name,
+          values: (e.values || []).map((v: any) => v.name || String(v)),
+        });
+      }
+
       const rawTables = schema.tables || [];
       for (const t of rawTables) {
         const columns: ColumnDefinition[] = (t.fields || []).map(
@@ -136,6 +146,7 @@ export function parseDbml(
       schema: {
         tables,
         relations,
+        enums,
         dialect,
       },
       diagnostics: [],
