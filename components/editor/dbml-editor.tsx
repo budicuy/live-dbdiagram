@@ -11,10 +11,10 @@ export function DbmlEditor() {
   const diagnostics = useProjectStore((s) => s.diagnostics);
   const theme = useProjectStore((s) => s.ui.theme);
   const editorTargetLine = useProjectStore((s) => s.editorTargetLine);
-  const clearEditorTargetLine = useProjectStore((s) => s.clearEditorTargetLine);
 
   const editorRef = useRef<any>(null);
   const monacoRef = useRef<any>(null);
+  const decorationsRef = useRef<string[]>([]);
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Setup Monaco language & tokens provider
@@ -50,16 +50,42 @@ export function DbmlEditor() {
     const target = useProjectStore.getState().editorTargetLine;
     if (target) {
       setTimeout(() => {
-        editor.revealLineInCenter(target.line);
-        editor.setPosition({
-          lineNumber: target.line,
-          column: target.column ?? 1,
-        });
-        editor.focus();
-        useProjectStore.getState().clearEditorTargetLine();
-      }, 100);
+        jumpToLine(target.line, target.column ?? 1);
+      }, 50);
     }
   };
+
+  // Jump helper with visual pulse decoration
+  const jumpToLine = useCallback((line: number, column = 1) => {
+    const editor = editorRef.current;
+    const monaco = monacoRef.current;
+    if (!editor) return;
+
+    editor.revealLineInCenter(line);
+    editor.setPosition({ lineNumber: line, column });
+    editor.focus();
+
+    if (monaco) {
+      decorationsRef.current = editor.deltaDecorations(decorationsRef.current, [
+        {
+          range: new monaco.Range(line, 1, line, 1),
+          options: {
+            isWholeLine: true,
+            className: "bg-blue-500/20 dark:bg-blue-400/25",
+          },
+        },
+      ]);
+
+      setTimeout(() => {
+        if (editorRef.current) {
+          decorationsRef.current = editorRef.current.deltaDecorations(
+            decorationsRef.current,
+            [],
+          );
+        }
+      }, 1500);
+    }
+  }, []);
 
   // Sync Diagnostics to Monaco markers
   useEffect(() => {
@@ -87,17 +113,8 @@ export function DbmlEditor() {
   useEffect(() => {
     if (!editorTargetLine || !editorRef.current) return;
     const { line, column = 1 } = editorTargetLine;
-    const editor = editorRef.current;
-
-    const timer = setTimeout(() => {
-      editor.revealLineInCenter(line);
-      editor.setPosition({ lineNumber: line, column });
-      editor.focus();
-    }, 50);
-
-    clearEditorTargetLine();
-    return () => clearTimeout(timer);
-  }, [editorTargetLine, clearEditorTargetLine]);
+    jumpToLine(line, column);
+  }, [editorTargetLine, jumpToLine]);
 
   // Handle text changes with debounce
   const handleEditorChange = useCallback(

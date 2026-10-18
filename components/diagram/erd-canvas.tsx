@@ -276,11 +276,11 @@ function ErdCanvasContent() {
           <Controls
             position={controlsPosition}
             showInteractive={false}
-            className={`!m-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg shadow-sm overflow-hidden ${
+            className={`m-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg shadow-sm overflow-hidden ${
               showMinimap && controlsPosition === minimapPosition
                 ? controlsPosition.startsWith("bottom")
-                  ? "!mb-[168px]"
-                  : "!mt-[168px]"
+                  ? "mb-42!"
+                  : "mt-42!"
                 : ""
             }`}
           />
@@ -291,7 +291,7 @@ function ErdCanvasContent() {
             nodeStrokeWidth={3}
             zoomable
             pannable
-            className="!w-[200px] !h-[140px] !m-4 !bg-white/90 dark:!bg-slate-900/90 !border !border-slate-200 dark:!border-slate-800 rounded-lg overflow-hidden shadow-sm backdrop-blur-xs"
+            className="w-50! h-35! m-4! bg-white/90! dark:bg-slate-900/90! border! border-slate-200! dark:border-slate-800! rounded-lg overflow-hidden shadow-sm backdrop-blur-xs"
             nodeColor={() => (theme === "dark" ? "#3b82f6" : "#60a5fa")}
             maskColor={
               theme === "dark"

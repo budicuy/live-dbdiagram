@@ -14,6 +14,7 @@ import {
   Table2,
 } from "lucide-react";
 import { useState } from "react";
+import { SiMysql, SiPostgresql } from "react-icons/si";
 import { useProjectStore } from "../../lib/store/use-project-store";
 import type { Dialect } from "../../lib/types/schema";
 import { cn } from "../../lib/utils";
@@ -58,7 +59,7 @@ export function WelcomeScreen() {
   return (
     <div className="min-h-screen w-full bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col justify-between selection:bg-blue-500 selection:text-white relative overflow-x-hidden">
       {/* Background Glow Accents */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[350px] bg-gradient-to-b from-blue-500/10 via-indigo-500/5 to-transparent blur-3xl pointer-events-none" />
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-250 h-87.5 bg-linear-to-b from-blue-500/10 via-indigo-500/5 to-transparent blur-3xl pointer-events-none" />
 
       {/* Top Bar Header */}
       <header className="relative z-10 w-full max-w-6xl mx-auto px-6 py-5 flex items-center justify-between">
@@ -110,7 +111,7 @@ export function WelcomeScreen() {
         <div className="text-center space-y-2 mb-8">
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-slate-50">
             Selamat Datang di{" "}
-            <span className="bg-gradient-to-r from-blue-600 to-indigo-500 bg-clip-text text-transparent">
+            <span className="bg-linear-to-r from-blue-600 to-indigo-500 bg-clip-text text-transparent">
               Live DB Diagram
             </span>
           </h1>
@@ -143,8 +144,8 @@ export function WelcomeScreen() {
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2.5">
-                    <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-950/80 text-blue-600 dark:text-blue-400 font-bold text-xs">
-                      PG
+                    <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-[#336791]/10 dark:bg-[#336791]/20 text-[#336791] dark:text-[#5896cb] shrink-0">
+                      <SiPostgresql className="w-5 h-5" />
                     </div>
                     <div>
                       <div className="font-bold text-sm text-slate-900 dark:text-slate-100">
@@ -199,8 +200,8 @@ export function WelcomeScreen() {
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2.5">
-                    <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-950/80 text-amber-600 dark:text-amber-400 font-bold text-xs">
-                      MY
+                    <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-[#00758F]/10 dark:bg-[#00758F]/20 text-[#00758F] dark:text-[#00a6cb] shrink-0">
+                      <SiMysql className="w-5 h-5" />
                     </div>
                     <div>
                       <div className="font-bold text-sm text-slate-900 dark:text-slate-100">
@@ -420,13 +421,18 @@ export function WelcomeScreen() {
                     </div>
                     <span
                       className={cn(
-                        "text-[9px] font-mono px-1.5 py-0.5 rounded font-bold uppercase",
+                        "text-[9px] font-mono px-1.5 py-0.5 rounded font-bold uppercase inline-flex items-center gap-1",
                         proj.dialect === "postgres"
                           ? "bg-blue-100 dark:bg-blue-950 text-blue-600 dark:text-blue-400"
                           : "bg-amber-100 dark:bg-amber-950 text-amber-600 dark:text-amber-400",
                       )}
                     >
-                      {proj.dialect}
+                      {proj.dialect === "postgres" ? (
+                        <SiPostgresql className="w-2.5 h-2.5" />
+                      ) : (
+                        <SiMysql className="w-2.5 h-2.5" />
+                      )}
+                      <span>{proj.dialect}</span>
                     </span>
                   </div>
 

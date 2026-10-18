@@ -53,7 +53,7 @@ export const TableNode = memo(({ data, selected }: TableNodeProps) => {
     <div
       onClick={handleTableClick}
       className={cn(
-        "group min-w-[240px] max-w-[320px] rounded-lg border bg-white dark:bg-slate-900 shadow-md transition-all select-none text-xs",
+        "group min-w-60 max-w-[320px] rounded-lg border bg-white dark:bg-slate-900 shadow-md transition-all select-none text-xs",
         selected
           ? "border-blue-500 ring-2 ring-blue-500/20 shadow-blue-500/10 shadow-lg"
           : "border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700",
@@ -113,7 +113,7 @@ export const TableNode = memo(({ data, selected }: TableNodeProps) => {
                 type="source"
                 position={Position.Left}
                 id={`${col.name}-left`}
-                className="!w-2 !h-2 !-left-1 !bg-blue-500 !border-white dark:!border-slate-900"
+                className="w-2! h-2! -left-1! bg-blue-500! border-white! dark:border-slate-900!"
               />
 
               {/* Left: Key & Name */}
@@ -166,7 +166,7 @@ export const TableNode = memo(({ data, selected }: TableNodeProps) => {
                 type="source"
                 position={Position.Right}
                 id={`${col.name}-right`}
-                className="!w-2 !h-2 !-right-1 !bg-blue-500 !border-white dark:!border-slate-900"
+                className="w-2! h-2! -right-1! bg-blue-500! border-white! dark:border-slate-900!"
               />
             </div>
           );

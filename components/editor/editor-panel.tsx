@@ -115,8 +115,9 @@ export function EditorPanel() {
   };
 
   const handleJumpToIssue = (line?: number, column?: number) => {
-    if (line) {
+    if (line && line > 0) {
       gotoEditorLine(line, column || 1);
+      setShowDiagnosticsPanel(false);
     }
   };
 
@@ -208,7 +209,7 @@ export function EditorPanel() {
       {showDiagnosticsPanel && hasIssues && (
         <div
           ref={diagnosticsRef}
-          className="absolute top-[38px] left-3 w-[380px] max-w-[calc(100%-1.5rem)] max-h-[80%] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xl z-30 flex flex-col overflow-hidden animate-in fade-in slide-in-from-top-1 duration-150 ring-1 ring-black/5 dark:ring-white/10"
+          className="absolute top-9.5 left-3 w-95 max-w-[calc(100%-1.5rem)] max-h-[80%] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xl z-30 flex flex-col overflow-hidden animate-in fade-in slide-in-from-top-1 duration-150 ring-1 ring-black/5 dark:ring-white/10"
         >
           {/* Popover Header */}
           <div className="flex items-center justify-between px-3 py-2 bg-slate-100/90 dark:bg-slate-800/90 border-b border-slate-200 dark:border-slate-800">

@@ -94,8 +94,8 @@ export const CustomEdge = memo(
           className={cn(
             "transition-colors cursor-pointer",
             selected
-              ? "!stroke-blue-500 !stroke-[2.5px]"
-              : "!stroke-slate-400 dark:!stroke-slate-600 hover:!stroke-blue-400",
+              ? "stroke-blue-500! stroke-[2.5px]!"
+              : "stroke-slate-400! dark:stroke-slate-600! hover:stroke-blue-400!",
           )}
         />
         <EdgeLabelRenderer>

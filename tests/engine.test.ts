@@ -5,6 +5,7 @@ import { serializeDbml } from "../lib/engine/serializer";
 import { exportDbmlToSql } from "../lib/engine/sql-exporter";
 import { importSqlToDbml } from "../lib/engine/sql-importer";
 import { validateSchema } from "../lib/engine/validator";
+import { useProjectStore } from "../lib/store/use-project-store";
 import { ProjectBackupSchema } from "../lib/types/schema";
 
 describe("DBML Parser & Serializer", () => {
@@ -374,5 +375,47 @@ describe("Project Backup Schema Validation", () => {
 
     const parsed = ProjectBackupSchema.safeParse(sampleBackup);
     expect(parsed.success).toBe(true);
+  });
+});
+
+describe("Editor Line Navigation (gotoEditorLine)", () => {
+  it("sets line, column, and timestamp correctly", () => {
+    useProjectStore.getState().gotoEditorLine(40, 7);
+    const target = useProjectStore.getState().editorTargetLine;
+
+    expect(target).not.toBeNull();
+    expect(target?.line).toBe(40);
+    expect(target?.column).toBe(7);
+    expect(target?.timestamp).toBeGreaterThan(0);
+  });
+
+  it("automatically opens editor if it was closed", () => {
+    useProjectStore.setState({
+      ui: {
+        ...useProjectStore.getState().ui,
+        editorOpen: false,
+      },
+    });
+
+    expect(useProjectStore.getState().ui.editorOpen).toBe(false);
+
+    useProjectStore.getState().gotoEditorLine(25, 3);
+
+    expect(useProjectStore.getState().ui.editorOpen).toBe(true);
+    expect(useProjectStore.getState().editorTargetLine?.line).toBe(25);
+  });
+
+  it("generates a new timestamp on consecutive calls to the same line", async () => {
+    useProjectStore.getState().gotoEditorLine(40, 7);
+    const firstTimestamp =
+      useProjectStore.getState().editorTargetLine?.timestamp;
+
+    await new Promise((r) => setTimeout(r, 10));
+
+    useProjectStore.getState().gotoEditorLine(40, 7);
+    const secondTimestamp =
+      useProjectStore.getState().editorTargetLine?.timestamp;
+
+    expect(secondTimestamp).toBeGreaterThan(firstTimestamp ?? 0);
   });
 });

@@ -136,7 +136,11 @@ interface ProjectStore {
   setShowControls: (show: boolean) => void;
   toggleControls: () => void;
   setControlsPosition: (pos: CanvasPanelPosition) => void;
-  editorTargetLine: { line: number; column?: number } | null;
+  editorTargetLine: {
+    line: number;
+    column?: number;
+    timestamp?: number;
+  } | null;
   gotoEditorLine: (line: number, column?: number) => void;
   clearEditorTargetLine: () => void;
 
@@ -178,7 +182,13 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
     canvasFocusTarget: null,
     editorTargetLine: null,
     gotoEditorLine: (line: number, column = 1) => {
-      set({ editorTargetLine: { line, column } });
+      const currentUi = get().ui;
+      set({
+        ui: currentUi.editorOpen
+          ? currentUi
+          : { ...currentUi, editorOpen: true },
+        editorTargetLine: { line, column, timestamp: Date.now() },
+      });
     },
     clearEditorTargetLine: () => {
       set({ editorTargetLine: null });
