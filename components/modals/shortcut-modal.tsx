@@ -8,6 +8,7 @@ interface ShortcutModalProps {
 }
 
 const SHORTCUTS = [
+  { key: "Ctrl + S / Cmd + S", desc: "Menyimpan proyek ke database lokal" },
   { key: "Ctrl + Z / Cmd + Z", desc: "Membatalkan perubahan skema (Undo)" },
   {
     key: "Ctrl + Y / Cmd + Shift + Z",

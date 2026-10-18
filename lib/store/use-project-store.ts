@@ -10,8 +10,10 @@ import {
   deleteProject as deleteDbProject,
   duplicateProject as duplicateDbProject,
   getProject,
+  getProjectHistory,
   listProjects,
   saveProject,
+  saveProjectSnapshot,
 } from "../storage/db";
 import {
   type CanvasPanelPosition,
@@ -22,6 +24,7 @@ import type {
   ColumnDefinition,
   DatabaseSchema,
   Dialect,
+  ProjectHistoryItem,
   ProjectRecord,
   RelationDefinition,
   SaveStatus,
@@ -39,6 +42,7 @@ interface UIState {
   showControls: boolean;
   controlsPosition: CanvasPanelPosition;
   topNavOpen: boolean;
+  autoSave: boolean;
 }
 
 interface ProjectStore {
@@ -136,6 +140,8 @@ interface ProjectStore {
   setShowControls: (show: boolean) => void;
   toggleControls: () => void;
   setControlsPosition: (pos: CanvasPanelPosition) => void;
+  setAutoSave: (enabled: boolean) => void;
+  toggleAutoSave: () => void;
   editorTargetLine: {
     line: number;
     column?: number;
@@ -146,6 +152,10 @@ interface ProjectStore {
 
   // Manual save trigger
   persistNow: () => Promise<void>;
+
+  // Save history & restore
+  getProjectHistory: () => Promise<ProjectHistoryItem[]>;
+  restoreSnapshot: (snapshot: ProjectHistoryItem) => Promise<void>;
 }
 
 let saveDebounceTimer: ReturnType<typeof setTimeout> | null = null;
@@ -155,12 +165,18 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
     set({ saveStatus: "unsaved" });
     if (saveDebounceTimer) clearTimeout(saveDebounceTimer);
 
+    const { ui } = get();
+    if (!ui.autoSave) {
+      return;
+    }
+
     saveDebounceTimer = setTimeout(async () => {
       const { project } = get();
       if (!project) return;
       set({ saveStatus: "saving" });
       try {
         await saveProject(project);
+        await saveProjectSnapshot(project, "Auto Save");
         set({ saveStatus: "saved" });
         get().refreshProjectsList();
       } catch (err) {
@@ -223,6 +239,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
       showControls: true,
       controlsPosition: "bottom-right",
       topNavOpen: true,
+      autoSave: true,
     },
     isInitialized: false,
 
@@ -251,6 +268,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
           showControls: prefs.showControls ?? true,
           controlsPosition: prefs.controlsPosition || "bottom-right",
           topNavOpen: prefs.topNavOpen ?? true,
+          autoSave: prefs.autoSave ?? true,
         },
       });
 
@@ -938,16 +956,84 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
       savePreferences({ controlsPosition: pos });
     },
 
+    setAutoSave: (enabled: boolean) => {
+      set((s) => ({ ui: { ...s.ui, autoSave: enabled } }));
+      savePreferences({ autoSave: enabled });
+      if (enabled && get().saveStatus === "unsaved") {
+        triggerDebouncedSave();
+      }
+    },
+
+    toggleAutoSave: () => {
+      const next = !get().ui.autoSave;
+      get().setAutoSave(next);
+    },
+
     persistNow: async () => {
       const { project } = get();
       if (!project) return;
       set({ saveStatus: "saving" });
       try {
         await saveProject(project);
+        await saveProjectSnapshot(project, "Manual");
         set({ saveStatus: "saved" });
         await get().refreshProjectsList();
       } catch (err) {
         console.error("Gagal menyimpan:", err);
+        set({ saveStatus: "error" });
+      }
+    },
+
+    getProjectHistory: async (): Promise<ProjectHistoryItem[]> => {
+      const { project } = get();
+      if (!project) return [];
+      try {
+        return await getProjectHistory(project.id);
+      } catch (err) {
+        console.error("Gagal mengambil riwayat proyek:", err);
+        return [];
+      }
+    },
+
+    restoreSnapshot: async (snapshot: ProjectHistoryItem) => {
+      const { project, history } = get();
+      if (!project) return;
+
+      // Push current DBML to undo stack before restoring so the restore can be undone
+      const newHistory = {
+        past: [...history.past.slice(-20), project.dbml],
+        future: [],
+      };
+
+      const parseRes = parseDbml(snapshot.dbml, snapshot.dialect);
+      const schema = parseRes.schema || snapshot.schema;
+      const validationDiags = validateSchema(schema, snapshot.dbml);
+      const diags = [...parseRes.diagnostics, ...validationDiags];
+
+      const restoredProject: ProjectRecord = {
+        ...project,
+        name: snapshot.name,
+        dialect: snapshot.dialect,
+        dbml: snapshot.dbml,
+        schema,
+        metadata: snapshot.metadata,
+        updatedAt: Date.now(),
+      };
+
+      set({
+        project: restoredProject,
+        diagnostics: diags,
+        history: newHistory,
+        saveStatus: "saving",
+      });
+
+      try {
+        await saveProject(restoredProject);
+        await saveProjectSnapshot(restoredProject, "Restore");
+        set({ saveStatus: "saved" });
+        await get().refreshProjectsList();
+      } catch (err) {
+        console.error("Gagal menyimpan versi dipulihkan:", err);
         set({ saveStatus: "error" });
       }
     },

@@ -16,6 +16,7 @@ export interface UserPreferences {
   showControls: boolean;
   controlsPosition: CanvasPanelPosition;
   topNavOpen: boolean;
+  autoSave: boolean;
 }
 
 const PREF_KEY = "live_dbdiagram_prefs";
@@ -32,6 +33,7 @@ const DEFAULT_PREFERENCES: UserPreferences = {
   showControls: true,
   controlsPosition: "bottom-right",
   topNavOpen: true,
+  autoSave: true,
 };
 
 export function getPreferences(): UserPreferences {

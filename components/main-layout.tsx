@@ -11,6 +11,7 @@ import { useEffect, useState } from "react";
 import { useProjectStore } from "../lib/store/use-project-store";
 import { cn } from "../lib/utils";
 import { ExportModal } from "./modals/export-modal";
+import { HistoryModal } from "./modals/history-modal";
 import { ImportModal } from "./modals/import-modal";
 import { ProjectModal } from "./modals/project-modal";
 import { ShortcutModal } from "./modals/shortcut-modal";
@@ -24,7 +25,6 @@ const EditorPanel = dynamic(
   () => import("./editor/editor-panel").then((mod) => mod.EditorPanel),
   { ssr: false },
 );
-
 const ErdCanvas = dynamic(
   () => import("./diagram/erd-canvas").then((mod) => mod.ErdCanvas),
   { ssr: false },
@@ -45,6 +45,7 @@ export function MainLayout() {
   const editorWidth = useProjectStore((s) => s.ui.editorWidth);
   const inspectorOpen = useProjectStore((s) => s.ui.inspectorOpen);
   const toggleInspector = useProjectStore((s) => s.toggleInspector);
+  const persistNow = useProjectStore((s) => s.persistNow);
 
   const sidebarLeft = sidebarOpen ? 256 : 0;
   const editorLeft = (sidebarOpen ? 256 : 0) + (editorOpen ? editorWidth : 0);
@@ -54,6 +55,7 @@ export function MainLayout() {
   const [importModalOpen, setImportModalOpen] = useState(false);
   const [exportModalOpen, setExportModalOpen] = useState(false);
   const [shortcutModalOpen, setShortcutModalOpen] = useState(false);
+  const [historyModalOpen, setHistoryModalOpen] = useState(false);
 
   useEffect(() => {
     initStore();
@@ -62,7 +64,14 @@ export function MainLayout() {
   // Global keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Don't intercept if focus is inside an input, textarea, or monaco editor
+      // Global Ctrl+S / Cmd+S save shortcut (intercept anywhere)
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
+        e.preventDefault();
+        persistNow();
+        return;
+      }
+
+      // Don't intercept undo/redo if focus is inside an input, textarea, or monaco editor
       const target = e.target as HTMLElement;
       if (
         target &&
@@ -89,7 +98,7 @@ export function MainLayout() {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [undo, redo]);
+  }, [undo, redo, persistNow]);
 
   if (!isInitialized) {
     return (
@@ -126,6 +135,7 @@ export function MainLayout() {
             onOpenImportModal={() => setImportModalOpen(true)}
             onOpenExportModal={() => setExportModalOpen(true)}
             onOpenShortcutModal={() => setShortcutModalOpen(true)}
+            onOpenHistoryModal={() => setHistoryModalOpen(true)}
           />
         </div>
 
@@ -223,6 +233,10 @@ export function MainLayout() {
       <ShortcutModal
         open={shortcutModalOpen}
         onClose={() => setShortcutModalOpen(false)}
+      />
+      <HistoryModal
+        open={historyModalOpen}
+        onClose={() => setHistoryModalOpen(false)}
       />
     </div>
   );

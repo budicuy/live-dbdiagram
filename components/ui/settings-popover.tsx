@@ -1,6 +1,14 @@
 "use client";
 
-import { Check, Map as MapIcon, Moon, Sun, X, ZoomIn } from "lucide-react";
+import {
+  Check,
+  Map as MapIcon,
+  Moon,
+  Save,
+  Sun,
+  X,
+  ZoomIn,
+} from "lucide-react";
 import { useEffect, useRef } from "react";
 import type { CanvasPanelPosition } from "../../lib/storage/preference";
 import { useProjectStore } from "../../lib/store/use-project-store";
@@ -33,6 +41,9 @@ export function SettingsPopover({ open, onClose }: SettingsPopoverProps) {
   const setShowMinimap = useProjectStore((s) => s.setShowMinimap);
   const minimapPosition = useProjectStore((s) => s.ui.minimapPosition);
   const setMinimapPosition = useProjectStore((s) => s.setMinimapPosition);
+
+  const autoSave = useProjectStore((s) => s.ui.autoSave);
+  const setAutoSave = useProjectStore((s) => s.setAutoSave);
 
   // Close on click outside or Escape key
   useEffect(() => {
@@ -254,6 +265,45 @@ export function SettingsPopover({ open, onClose }: SettingsPopoverProps) {
               </div>
             </div>
           )}
+        </div>
+
+        <div className="h-px bg-slate-100 dark:bg-slate-800" />
+
+        {/* 4. Auto Save */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              <Save className="w-3.5 h-3.5 text-blue-500" />
+              <div>
+                <div className="font-medium text-slate-800 dark:text-slate-200">
+                  Auto Save
+                </div>
+                <div className="text-[10px] text-slate-400">
+                  {autoSave
+                    ? "Simpan perubahan otomatis aktif"
+                    : "Simpan manual (Ctrl+S)"}
+                </div>
+              </div>
+            </div>
+            {/* Toggle Switch */}
+            <button
+              type="button"
+              role="switch"
+              aria-checked={autoSave}
+              onClick={() => setAutoSave(!autoSave)}
+              className={cn(
+                "relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full transition-colors duration-200 ease-in-out focus:outline-hidden",
+                autoSave ? "bg-blue-600" : "bg-slate-300 dark:bg-slate-700",
+              )}
+            >
+              <span
+                className={cn(
+                  "pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow-sm transform transition duration-200 ease-in-out mt-0.5",
+                  autoSave ? "translate-x-4.5 ml-0" : "translate-x-0.5",
+                )}
+              />
+            </button>
+          </div>
         </div>
       </div>
     </div>

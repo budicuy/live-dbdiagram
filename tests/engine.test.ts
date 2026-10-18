@@ -6,7 +6,10 @@ import { exportDbmlToSql } from "../lib/engine/sql-exporter";
 import { importSqlToDbml } from "../lib/engine/sql-importer";
 import { validateSchema } from "../lib/engine/validator";
 import { useProjectStore } from "../lib/store/use-project-store";
-import { ProjectBackupSchema } from "../lib/types/schema";
+import {
+  ProjectBackupSchema,
+  ProjectHistoryItemSchema,
+} from "../lib/types/schema";
 
 describe("DBML Parser & Serializer", () => {
   it("parses DBML tables, columns, constraints and references correctly", () => {
@@ -417,5 +420,122 @@ describe("Editor Line Navigation (gotoEditorLine)", () => {
       useProjectStore.getState().editorTargetLine?.timestamp;
 
     expect(secondTimestamp).toBeGreaterThan(firstTimestamp ?? 0);
+  });
+});
+
+describe("Auto Save Setting & Persistence", () => {
+  it("defaults to autoSave: true", () => {
+    expect(useProjectStore.getState().ui.autoSave).toBe(true);
+  });
+
+  it("toggles autoSave state correctly", () => {
+    useProjectStore.getState().setAutoSave(false);
+    expect(useProjectStore.getState().ui.autoSave).toBe(false);
+
+    useProjectStore.getState().toggleAutoSave();
+    expect(useProjectStore.getState().ui.autoSave).toBe(true);
+  });
+
+  it("keeps unsaved status without auto saving when autoSave is false", () => {
+    useProjectStore.getState().setAutoSave(false);
+    useProjectStore.setState({
+      project: {
+        id: "test_proj",
+        name: "Test Project",
+        dialect: "postgres",
+        dbml: "Table old { id int }",
+        schema: { dialect: "postgres", tables: [], relations: [] },
+        metadata: { positions: {} },
+        createdAt: 1000,
+        updatedAt: 1000,
+      },
+      saveStatus: "saved",
+    });
+
+    useProjectStore.getState().setDbml("Table test_autosave { id int [pk] }");
+    expect(useProjectStore.getState().saveStatus).toBe("unsaved");
+
+    // Restore autoSave to true
+    useProjectStore.getState().setAutoSave(true);
+  });
+});
+
+describe("Project Save History & Restore", () => {
+  it("validates ProjectHistoryItemSchema correctly", () => {
+    const sampleHistory = {
+      id: "hist_123",
+      projectId: "proj_1",
+      name: "E-Commerce",
+      dialect: "postgres" as const,
+      dbml: "Table users { id int [pk] }",
+      schema: {
+        dialect: "postgres" as const,
+        tables: [
+          {
+            id: "users",
+            name: "users",
+            columns: [{ id: "c1", name: "id", type: "int", pk: true }],
+          },
+        ],
+        relations: [],
+      },
+      metadata: { positions: { users: { x: 50, y: 50 } } },
+      tableCount: 1,
+      timestamp: Date.now(),
+      label: "Manual",
+    };
+
+    const res = ProjectHistoryItemSchema.safeParse(sampleHistory);
+    expect(res.success).toBe(true);
+  });
+
+  it("restores snapshot correctly and pushes previous state to undo history", async () => {
+    const initialDbml = "Table current_state { id int }";
+    useProjectStore.setState({
+      project: {
+        id: "proj_restore_test",
+        name: "Restore Test",
+        dialect: "postgres",
+        dbml: initialDbml,
+        schema: { dialect: "postgres", tables: [], relations: [] },
+        metadata: { positions: {} },
+        createdAt: 1000,
+        updatedAt: 1000,
+      },
+      history: { past: [], future: [] },
+    });
+
+    const snapshot = {
+      id: "hist_target",
+      projectId: "proj_restore_test",
+      name: "Restored Version",
+      dialect: "postgres" as const,
+      dbml: "Table previous_state { id int [pk] }",
+      schema: {
+        dialect: "postgres" as const,
+        tables: [
+          {
+            id: "previous_state",
+            name: "previous_state",
+            columns: [{ id: "c1", name: "id", type: "int", pk: true }],
+          },
+        ],
+        relations: [],
+      },
+      metadata: { positions: { previous_state: { x: 100, y: 100 } } },
+      tableCount: 1,
+      timestamp: 500,
+      label: "Auto Save",
+    };
+
+    await useProjectStore.getState().restoreSnapshot(snapshot);
+
+    const updated = useProjectStore.getState().project;
+    expect(updated?.dbml).toBe(snapshot.dbml);
+    expect(updated?.name).toBe("Restored Version");
+    expect(updated?.schema.tables.length).toBe(1);
+
+    // Verify previous state was pushed to past undo history
+    expect(useProjectStore.getState().history.past).toContain(initialDbml);
   });
 });

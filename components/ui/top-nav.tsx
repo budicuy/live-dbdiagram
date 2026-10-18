@@ -9,9 +9,11 @@ import {
   FileUp,
   FolderOpen,
   HelpCircle,
+  History,
   LayoutGrid,
   Loader2,
   Redo2,
+  Save,
   Settings,
   Undo2,
 } from "lucide-react";
@@ -27,6 +29,7 @@ interface TopNavProps {
   onOpenImportModal: () => void;
   onOpenExportModal: () => void;
   onOpenShortcutModal: () => void;
+  onOpenHistoryModal: () => void;
 }
 
 export function TopNav({
@@ -34,6 +37,7 @@ export function TopNav({
   onOpenImportModal,
   onOpenExportModal,
   onOpenShortcutModal,
+  onOpenHistoryModal,
 }: TopNavProps) {
   const project = useProjectStore((s) => s.project);
   const saveStatus = useProjectStore((s) => s.saveStatus);
@@ -43,6 +47,7 @@ export function TopNav({
   const applyAutoLayout = useProjectStore((s) => s.applyAutoLayout);
   const setProjectName = useProjectStore((s) => s.setProjectName);
   const persistNow = useProjectStore((s) => s.persistNow);
+  const autoSave = useProjectStore((s) => s.ui.autoSave);
   const setShowWelcomeScreen = useProjectStore((s) => s.setShowWelcomeScreen);
 
   const [isEditingTitle, setIsEditingTitle] = useState(false);
@@ -71,7 +76,7 @@ export function TopNav({
             type="button"
             title="Tersimpan di IndexedDB lokal"
             onClick={persistNow}
-            className="flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400 font-medium"
+            className="flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400 font-medium cursor-pointer"
           >
             <CheckCircle2 className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Tersimpan</span>
@@ -89,11 +94,24 @@ export function TopNav({
           <button
             type="button"
             onClick={persistNow}
-            title="Klik untuk menyimpan langsung ke IndexedDB"
-            className="flex items-center gap-1 text-[11px] text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 font-medium"
+            title={
+              autoSave
+                ? "Menunggu auto-save... (Klik untuk simpan langsung)"
+                : "Klik untuk menyimpan perubahan (Ctrl+S)"
+            }
+            className={cn(
+              "flex items-center gap-1.5 px-2 py-0.5 rounded-md font-medium text-[11px] transition-colors cursor-pointer",
+              autoSave
+                ? "text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                : "bg-amber-100 hover:bg-amber-200 dark:bg-amber-950/80 dark:hover:bg-amber-900/80 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-800 shadow-2xs",
+            )}
           >
-            <span className="w-2 h-2 rounded-full bg-amber-400" />
-            <span className="hidden sm:inline">Belum tersimpan</span>
+            {autoSave ? (
+              <span className="w-2 h-2 rounded-full bg-amber-400" />
+            ) : (
+              <Save className="w-3 h-3 text-amber-600 dark:text-amber-400" />
+            )}
+            <span className="hidden sm:inline">Belum tersimpan*</span>
           </button>
         );
       case "error":
@@ -199,7 +217,7 @@ export function TopNav({
 
       {/* Right: Actions & Tools */}
       <div className="flex items-center gap-1.5 sm:gap-2">
-        {/* Undo / Redo */}
+        {/* Undo / Redo / History */}
         <div className="flex items-center rounded-md border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 overflow-hidden">
           <button
             type="button"
@@ -219,6 +237,15 @@ export function TopNav({
             className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           >
             <Redo2 className="w-3.5 h-3.5" />
+          </button>
+          <div className="w-px h-3.5 bg-slate-200 dark:bg-slate-800" />
+          <button
+            type="button"
+            title="Riwayat Versi Tersimpan & Restore"
+            onClick={onOpenHistoryModal}
+            className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-blue-500 dark:hover:text-blue-400 transition-colors cursor-pointer"
+          >
+            <History className="w-3.5 h-3.5" />
           </button>
         </div>
 

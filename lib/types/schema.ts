@@ -178,3 +178,18 @@ export const ProjectBackupSchema = z.object({
 });
 
 export type ProjectBackup = z.infer<typeof ProjectBackupSchema>;
+
+export const ProjectHistoryItemSchema = z.object({
+  id: z.string(),
+  projectId: z.string(),
+  name: z.string(),
+  dialect: z.enum(["postgres", "mysql"]),
+  dbml: z.string(),
+  schema: DatabaseSchemaValidator,
+  metadata: DiagramMetadataSchema,
+  tableCount: z.number(),
+  timestamp: z.number(),
+  label: z.string().optional(),
+});
+
+export type ProjectHistoryItem = z.infer<typeof ProjectHistoryItemSchema>;
