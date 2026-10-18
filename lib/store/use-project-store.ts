@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { findDbmlColumnLine, findDbmlTableLine } from "../engine/dbml-locator";
 import { computeAutoLayout } from "../engine/layout";
 import { parseDbml } from "../engine/parser";
+import { DEFAULT_DBML } from "../engine/sample";
 import { serializeDbml } from "../engine/serializer";
 import { validateSchema } from "../engine/validator";
 import {
@@ -55,10 +56,17 @@ interface ProjectStore {
   canvasFocusTarget: { tableId: string; timestamp: number } | null;
   ui: UIState;
   isInitialized: boolean;
+  showWelcomeScreen: boolean;
 
-  // Lifecycle
+  // Lifecycle & Welcome
   initStore: () => Promise<void>;
   refreshProjectsList: () => Promise<void>;
+  setShowWelcomeScreen: (show: boolean) => void;
+  startProjectFromWelcome: (
+    name: string,
+    dialect: Dialect,
+    template?: "sample" | "blank",
+  ) => Promise<void>;
   switchProject: (id: string) => Promise<void>;
   createNewProject: (
     name?: string,
@@ -175,6 +183,25 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
     clearEditorTargetLine: () => {
       set({ editorTargetLine: null });
     },
+    showWelcomeScreen: true,
+    setShowWelcomeScreen: (show: boolean) => {
+      set({ showWelcomeScreen: show });
+    },
+    startProjectFromWelcome: async (
+      name: string,
+      dialect: Dialect,
+      template: "sample" | "blank" = "sample",
+    ) => {
+      const dbml =
+        template === "sample"
+          ? DEFAULT_DBML
+          : `// Skema Baru ${dialect === "postgres" ? "PostgreSQL" : "MySQL"}\n`;
+      const finalName =
+        name.trim() ||
+        (dialect === "postgres" ? "Proyek PostgreSQL" : "Proyek MySQL");
+      await get().createNewProject(finalName, dialect, dbml);
+      set({ showWelcomeScreen: false });
+    },
     ui: {
       editorOpen: true,
       inspectorOpen: true,
@@ -284,6 +311,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
           selectedColumnName: null,
           canvasFocusTarget: null,
           saveStatus: "saved",
+          showWelcomeScreen: false,
         });
       } catch (err) {
         console.error("Gagal beralih proyek:", err);

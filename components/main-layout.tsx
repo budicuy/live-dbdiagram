@@ -17,6 +17,7 @@ import { ShortcutModal } from "./modals/shortcut-modal";
 import { InspectorPanel } from "./panels/inspector-panel";
 import { SidebarTables } from "./panels/sidebar-tables";
 import { TopNav } from "./ui/top-nav";
+import { WelcomeScreen } from "./welcome/welcome-screen";
 
 // Dynamic import with SSR false for Monaco Editor and React Flow Canvas
 const EditorPanel = dynamic(
@@ -32,6 +33,7 @@ const ErdCanvas = dynamic(
 export function MainLayout() {
   const initStore = useProjectStore((s) => s.initStore);
   const isInitialized = useProjectStore((s) => s.isInitialized);
+  const showWelcomeScreen = useProjectStore((s) => s.showWelcomeScreen);
   const undo = useProjectStore((s) => s.undo);
   const redo = useProjectStore((s) => s.redo);
   const topNavOpen = useProjectStore((s) => s.ui.topNavOpen);
@@ -98,6 +100,10 @@ export function MainLayout() {
         </div>
       </div>
     );
+  }
+
+  if (showWelcomeScreen) {
+    return <WelcomeScreen />;
   }
 
   return (

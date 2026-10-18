@@ -43,6 +43,7 @@ export function TopNav({
   const setDialect = useProjectStore((s) => s.setDialect);
   const setProjectName = useProjectStore((s) => s.setProjectName);
   const persistNow = useProjectStore((s) => s.persistNow);
+  const setShowWelcomeScreen = useProjectStore((s) => s.setShowWelcomeScreen);
 
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [titleInput, setTitleInput] = useState("");
@@ -114,15 +115,20 @@ export function TopNav({
     <header className="flex items-center justify-between h-13 px-4 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 select-none text-xs shrink-0 z-20">
       {/* Left: Brand & Project Name */}
       <div className="flex items-center gap-3">
-        {/* App Logo */}
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-linear-to-tr from-blue-600 to-indigo-500 flex items-center justify-center text-white shadow-xs">
+        {/* App Logo & Home / Welcome button */}
+        <button
+          type="button"
+          onClick={() => setShowWelcomeScreen(true)}
+          title="Kembali ke Halaman Awal (Welcome Screen)"
+          className="flex items-center gap-2 group cursor-pointer text-left focus:outline-hidden"
+        >
+          <div className="w-8 h-8 rounded-lg bg-linear-to-tr from-blue-600 to-indigo-500 flex items-center justify-center text-white shadow-xs group-hover:scale-105 transition-transform">
             <Database className="w-4 h-4" />
           </div>
-          <span className="font-bold text-sm tracking-tight text-slate-900 dark:text-slate-100 hidden md:inline">
+          <span className="font-bold text-sm tracking-tight text-slate-900 dark:text-slate-100 hidden md:inline group-hover:text-blue-500 transition-colors">
             Live DB Diagram
           </span>
-        </div>
+        </button>
 
         <div className="h-4 w-px bg-slate-200 dark:bg-slate-800 hidden md:block" />
 

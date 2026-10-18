@@ -22,6 +22,7 @@ export function ImportModal({ open, onClose }: ImportModalProps) {
   const setDialect = useProjectStore((s) => s.setDialect);
   const updateAllPositions = useProjectStore((s) => s.updateAllPositions);
   const createNewProject = useProjectStore((s) => s.createNewProject);
+  const setShowWelcomeScreen = useProjectStore((s) => s.setShowWelcomeScreen);
 
   const [importType, setImportType] = useState<ImportType>("dbml");
   const [inputText, setInputText] = useState("");
@@ -72,6 +73,7 @@ export function ImportModal({ open, onClose }: ImportModalProps) {
             content,
           );
         }
+        setShowWelcomeScreen(false);
         onClose();
       } else if (importType === "sql-mysql" || importType === "sql-postgres") {
         const dialect: Dialect =
@@ -98,6 +100,7 @@ export function ImportModal({ open, onClose }: ImportModalProps) {
             importRes.dbml,
           );
         }
+        setShowWelcomeScreen(false);
         onClose();
       } else if (importType === "json") {
         let parsedJson: any;
@@ -126,6 +129,7 @@ export function ImportModal({ open, onClose }: ImportModalProps) {
             backup.dbml,
           );
         }
+        setShowWelcomeScreen(false);
         onClose();
       }
     } catch (err: any) {
